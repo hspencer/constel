@@ -1,0 +1,424 @@
+/* Tab 2: Lector */
+
+/* ── Layout del reader: sidebar | resizer | minimap | texto ────────────── */
+.reader-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.reader-sidebar {
+  width: 420px;
+  min-width: 200px;
+  max-width: 60vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: none;
+}
+
+/* ── Resizer (drag handle entre sidebar y texto) ─────────────────────── */
+.reader-resizer {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--border);
+  transition: background 0.15s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.reader-resizer:hover,
+.reader-resizer.dragging {
+  background: var(--accent);
+}
+
+.reader-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 32px;
+  border-radius: 1px;
+  background: var(--muted);
+  opacity: 0.5;
+}
+
+.reader-resizer:hover::after,
+.reader-resizer.dragging::after {
+  background: white;
+  opacity: 1;
+}
+
+.reader-text-panel {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Texto del lector ──────────────────────────────────────────────────── */
+.reader-content {
+  font-family: var(--font);
+  font-size: var(--font-size-base);
+  line-height: 1.8;
+  padding: var(--space-lg) var(--space-xl);
+  max-width: 72ch;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* ── Excerpts marcados en el texto ─────────────────────────────────────── */
+.reader-content mark {
+  background: var(--mark-bg);
+  border-bottom: 2px solid var(--accent);
+  padding: 1px 2px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.reader-content mark:hover {
+  background: var(--accent-light);
+}
+
+.reader-content mark.highlight-active {
+  background: var(--accent-light) !important;
+  outline: 2px solid var(--accent);
+  animation: flash-new 1.5s ease-out;
+}
+
+@keyframes flash-new {
+  0% { outline-width: 4px; outline-color: var(--accent); background: var(--accent-light) !important; }
+  50% { outline-width: 2px; }
+  100% { outline-width: 2px; outline-color: transparent; }
+}
+
+/* ── Excerpt tooltip (hover sobre highlights) ──────────────────────────── */
+.excerpt-tooltip {
+  position: fixed;
+  z-index: 1100;
+  display: none;
+  align-items: center;
+  gap: var(--space-xs);
+  background: var(--ink);
+  color: var(--surface);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.tooltip-concepts {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.tooltip-concept {
+  color: var(--accent-light, #8fc);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.tooltip-concept:hover {
+  text-decoration: underline;
+}
+
+.tooltip-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: var(--space-xs);
+  border-left: 1px solid rgba(255,255,255,0.2);
+  padding-left: var(--space-xs);
+}
+
+.tooltip-btn {
+  background: transparent;
+  border: none;
+  color: var(--surface);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.tooltip-btn:hover {
+  opacity: 1;
+  background: rgba(255,255,255,0.15);
+}
+
+/* ── Modo "agregar sección" ─────────────────────────────────────────────── */
+.reader-content.add-section-mode {
+  cursor: text;
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+.reader-content.add-section-mode::selection,
+.reader-content.add-section-mode *::selection {
+  background: rgba(45, 106, 90, 0.3);
+}
+
+/* Highlight temporal mientras se escribe el concepto */
+.reader-content mark.temp-highlight {
+  background: rgba(45, 106, 90, 0.25);
+  border-bottom: 2px dashed var(--accent);
+  border-radius: 2px;
+  animation: pulse-highlight 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+  0%, 100% { background: rgba(45, 106, 90, 0.25); }
+  50% { background: rgba(45, 106, 90, 0.15); }
+}
+
+/* ── Minimap vertical (barra angosta entre sidebar y texto) ────────────── */
+.reader-minimap-strip {
+  width: 32px;
+  flex-shrink: 0;
+  position: relative;
+  background: var(--surface-alt);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.reader-minimap-strip .minimap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.minimap-band {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  min-height: 2px;
+  border-radius: 1px;
+  opacity: 0.7;
+}
+
+.minimap-viewport {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(45, 106, 90, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.minimap-stats {
+  position: absolute;
+  bottom: var(--space-xs);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.5625rem;
+  color: var(--muted);
+  gap: 2px;
+  pointer-events: none;
+}
+
+/* ── Sidebar concept map ───────────────────────────────────────────────── */
+.reader-sidebar .panel-content {
+  padding: 0;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.reader-sidebar .panel-content svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Concept detail panel (below map) ──────────────────────────────────── */
+.concept-detail {
+  border-top: 1px solid var(--border);
+  max-height: 45%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.concept-detail[hidden] {
+  display: none;
+}
+
+.concept-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+.concept-detail-label {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  padding: var(--space-xs) 0;
+  outline: none;
+  font-family: var(--font);
+}
+
+.concept-detail-label:focus {
+  border-bottom-color: var(--accent);
+}
+
+.concept-detail-excerpts {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.concept-detail-excerpt {
+  padding: var(--space-xs) var(--space-sm);
+  margin-bottom: var(--space-xs);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
+  cursor: pointer;
+  position: relative;
+}
+
+.concept-detail-excerpt:hover {
+  background: var(--mark-bg);
+}
+
+.concept-detail-excerpt .excerpt-source {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.concept-detail-excerpt .excerpt-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.concept-detail-excerpt:hover .excerpt-remove {
+  opacity: 1;
+}
+
+.concept-detail-excerpt .excerpt-remove:hover {
+  background: var(--danger, #c44);
+  color: white;
+}
+
+.concept-detail-actions {
+  padding: var(--space-sm);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger, #c44);
+  border: 1px solid var(--danger, #c44);
+}
+
+.btn-danger:hover {
+  background: var(--danger, #c44);
+  color: white;
+}
+
+/* ── Lista de conceptos (fallback) ─────────────────────────────────────── */
+.concept-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.concept-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+  font-size: var(--font-size-sm);
+}
+
+.concept-list-item:hover {
+  background: var(--surface-alt);
+}
+
+.concept-list-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: var(--space-sm);
+}
+
+.concept-list-item .label {
+  flex: 1;
+}
+
+.concept-list-item .count {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ── Feedback positivo al crear excerpt ────────────────────────────────── */
+.excerpt-created-toast {
+  position: fixed;
+  bottom: var(--space-lg);
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: var(--accent);
+  color: white;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 1001;
+  opacity: 0;
+  animation: toast-in-out 1.8s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes toast-in-out {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  75% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}

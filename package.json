@@ -1,0 +1,11 @@
+{
+  "name": "constel",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "con§tel — herramienta de análisis temático de corpus textuales",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "author": "Herbert Spencer",
+  "license": "MIT"
+}

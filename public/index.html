@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>con§tel</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/tab-sources.css">
+  <link rel="stylesheet" href="css/tab-reader.css">
+  <link rel="stylesheet" href="css/tab-themes.css">
+</head>
+<body>
+  <!-- Shell principal -->
+  <header class="shell-header">
+    <h1 class="logo">con<span class="section-sign">§</span>tel</h1>
+    <div class="header-actions">
+      <span class="status-msg" id="statusMsg"></span>
+      <button class="btn-icon" id="themeToggle" title="Cambiar tema">◐</button>
+    </div>
+  </header>
+
+  <!-- Barra de pestañas -->
+  <nav class="tabs-bar" role="tablist">
+    <button class="tab-btn active" data-tab="sources" role="tab" aria-selected="true">
+      <span class="tab-icon">📄</span> Fuentes
+    </button>
+    <button class="tab-btn" data-tab="reader" role="tab" aria-selected="false">
+      <span class="tab-icon">📖</span> Lector
+    </button>
+    <button class="tab-btn" data-tab="themes" role="tab" aria-selected="false">
+      <span class="tab-icon">🗺️</span> Mapa
+    </button>
+  </nav>
+
+  <!-- Paneles de contenido -->
+  <main class="tab-panels">
+    <section class="tab-panel active" id="panel-sources" role="tabpanel">
+      <div class="split-view" data-split="sources">
+        <div class="split-left" id="sourcesList">
+          <div class="panel-header">
+            <h2>Corpus</h2>
+            <span class="badge" id="sourcesCount">0</span>
+          </div>
+          <div class="panel-content" id="sourcesListContent"></div>
+        </div>
+        <div class="split-handle" data-split="sources"></div>
+        <div class="split-right" id="sourcePreview">
+          <div class="panel-header">
+            <h2>Vista previa</h2>
+          </div>
+          <div class="panel-content" id="sourcePreviewContent">
+            <p class="placeholder">Selecciona un texto para ver su contenido</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-reader" role="tabpanel">
+      <div class="reader-layout">
+        <!-- Izquierda: conceptos -->
+        <div class="reader-sidebar" id="readerSidebar">
+          <div class="panel-header">
+            <h2>Conceptos</h2>
+            <span class="badge" id="readerConceptCount">0</span>
+          </div>
+          <div class="panel-content" id="readerConceptList"></div>
+          <!-- Panel de detalle del concepto seleccionado -->
+          <div class="concept-detail" id="conceptDetail" hidden>
+            <div class="concept-detail-header">
+              <input class="concept-detail-label" id="conceptDetailLabel" type="text" spellcheck="false" />
+              <button class="btn-icon" id="conceptDetailClose" title="Cerrar">✕</button>
+            </div>
+            <div class="concept-detail-excerpts" id="conceptDetailExcerpts"></div>
+            <div class="concept-detail-actions">
+              <button class="btn-sm btn-danger" id="conceptDetailDelete">Eliminar concepto</button>
+              <button class="btn-sm" id="conceptDetailAddExcerpt">+ Agregar sección</button>
+            </div>
+          </div>
+        </div>
+        <!-- Resizer handle -->
+        <div class="reader-resizer" id="readerResizer"></div>
+        <!-- Centro: minimap vertical angosto -->
+        <div class="reader-minimap-strip" id="readerMinimap"></div>
+        <!-- Derecha: texto -->
+        <div class="reader-text-panel" id="readerText">
+          <div class="panel-header">
+            <h2 id="readerTitle">Lector</h2>
+            <button class="btn-sm" id="backToSources">← Fuentes</button>
+          </div>
+          <div class="panel-content reader-content" id="readerTextContent">
+            <p class="placeholder">Selecciona un texto desde Fuentes para comenzar a leer</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-themes" role="tabpanel">
+      <div class="split-view" data-split="themes">
+        <div class="split-left" id="conceptMap">
+          <div class="panel-header">
+            <h2>Mapa de conceptos</h2>
+            <div class="map-controls">
+              <button class="btn-sm active" data-map-style="circular">●</button>
+              <button class="btn-sm" data-map-style="title">T</button>
+            </div>
+          </div>
+          <div class="panel-content map-content" id="mapContainer"></div>
+        </div>
+        <div class="split-handle" data-split="themes"></div>
+        <div class="split-right" id="themeDetail">
+          <div class="panel-header">
+            <h2 id="themeDetailTitle">Detalle</h2>
+          </div>
+          <div class="panel-content" id="themeDetailContent">
+            <p class="placeholder">Selecciona un concepto o tema en el mapa</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Popup para crear excerpts (oculto por defecto) -->
+  <div class="excerpt-popup" id="excerptPopup" hidden>
+    <div class="popup-content">
+      <input type="text" id="conceptInput" placeholder="Concepto [a]..." autocomplete="off">
+      <div class="autocomplete-dropdown" id="autocompleteDropdown" hidden></div>
+      <div class="popup-actions">
+        <button class="btn-primary btn-sm" id="createExcerpt">Marcar §</button>
+        <button class="btn-sm" id="cancelExcerpt">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- D3.js via CDN (sin build step) -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <!-- Módulos JS -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

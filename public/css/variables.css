@@ -1,0 +1,62 @@
+/* Variables de diseño — light / dark */
+:root {
+  /* Colores base */
+  --bg:           #f5f7fa;
+  --surface:      #ffffff;
+  --surface-alt:  #eef1f5;
+  --ink:          #1a1f2b;
+  --muted:        #6b7280;
+  --border:       #e2e6ec;
+  --accent:       #2d6a5a;
+  --accent-hover: #245a4c;
+  --accent-light: #e8f4f0;
+  --danger:       #b91c1c;
+  --danger-light: #fde8e8;
+  --mark-bg:      rgba(45, 106, 90, 0.15);
+
+  /* Tipografía */
+  --font:  "Avenir Next", "Inter", system-ui, -apple-system, sans-serif;
+  --mono:  "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  --font-size-sm:  0.8125rem;
+  --font-size-base: 0.9375rem;
+  --font-size-lg:  1.125rem;
+  --font-size-xl:  1.5rem;
+
+  /* Espaciado */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+
+  /* Formas */
+  --radius:    6px;
+  --radius-lg: 10px;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+
+  /* Transiciones */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration: 150ms;
+}
+
+[data-theme="dark"] {
+  --bg:           #0f1117;
+  --surface:      #1a1d27;
+  --surface-alt:  #242836;
+  --ink:          #e4e7ed;
+  --muted:        #8b919e;
+  --border:       #2e3240;
+  --accent:       #4ecdb4;
+  --accent-hover: #3fbda4;
+  --accent-light: #1a2f2a;
+  --danger:       #ef5350;
+  --danger-light: #2a1515;
+  --mark-bg:      rgba(78, 205, 180, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+}

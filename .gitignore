@@ -1,0 +1,7 @@
+node_modules/
+data/constel-db.json
+data/versions/
+corpus/*.txt
+.env
+.DS_Store
+constel/

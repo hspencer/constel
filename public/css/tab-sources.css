@@ -1,0 +1,61 @@
+/* Tab 1: Fuentes */
+
+.source-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.source-card {
+  cursor: pointer;
+}
+
+.source-card h3 {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+}
+
+.source-meta {
+  display: flex;
+  gap: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+}
+
+.source-meta .stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.source-progress {
+  margin-top: var(--space-sm);
+  height: 3px;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.source-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s var(--ease);
+}
+
+/* Vista previa */
+#sourcePreviewContent {
+  font-family: var(--mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.preview-truncated {
+  color: var(--muted);
+  font-style: italic;
+  margin-top: var(--space-md);
+  font-family: var(--font);
+}
