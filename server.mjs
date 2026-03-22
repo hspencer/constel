@@ -143,6 +143,29 @@ async function readTextSmart(filePath) {
   return decodeBufferSmart(await fs.readFile(filePath));
 }
 
+// ── Frontmatter YAML simple ──────────────────────────────────────────────────
+
+function parseFrontmatter(raw) {
+  const match = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+  if (!match) return { meta: {}, body: raw };
+  const yamlBlock = match[1];
+  const body = match[2].trim();
+  const meta = {};
+  for (const line of yamlBlock.split('\n')) {
+    const colon = line.indexOf(':');
+    if (colon <= 0) continue;
+    const key = line.slice(0, colon).trim();
+    let val = line.slice(colon + 1).trim();
+    // quitar comillas envolventes
+    if ((val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    meta[key] = val;
+  }
+  return { meta, body };
+}
+
 // ── Base de datos ───────────────────────────────────────────────────────────
 
 function defaultDb() {
@@ -251,13 +274,14 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { ok: true, sessionId: sid });
   }
 
-  // GET /api/corpus — listar archivos .txt
+  // GET /api/corpus — listar archivos .txt y .md
   if (pathname === "/api/corpus" && req.method === "GET") {
     try {
       const entries = await fs.readdir(CORPUS, { withFileTypes: true });
       const files = [];
       for (const e of entries) {
-        if (!e.isFile() || !e.name.endsWith(".txt")) continue;
+        if (!e.isFile()) continue;
+        if (!e.name.endsWith(".txt") && !e.name.endsWith(".md")) continue;
         const stat = await fs.stat(path.join(CORPUS, e.name));
         files.push({ filename: e.name, size: stat.size });
       }
@@ -268,7 +292,27 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  // GET /api/corpus/:filename — leer un texto
+  // PUT /api/corpus/rename — renombrar archivo del corpus
+  if (pathname === "/api/corpus/rename" && req.method === "PUT") {
+    const body = await readBody(req);
+    const { oldName, newName } = JSON.parse(body);
+    if (!oldName || !newName || oldName.includes("..") || newName.includes("..") ||
+        oldName.includes("/") || newName.includes("/")) {
+      return sendJson(res, 400, { error: "nombre de archivo inválido" });
+    }
+    const oldPath = path.join(CORPUS, oldName);
+    const newPath = path.join(CORPUS, newName);
+    try {
+      await fs.access(oldPath);
+      try { await fs.access(newPath); return sendJson(res, 409, { error: "ya existe un archivo con ese nombre" }); } catch {}
+      await fs.rename(oldPath, newPath);
+      return sendJson(res, 200, { ok: true, oldName, newName });
+    } catch {
+      return sendJson(res, 404, { error: "archivo no encontrado" });
+    }
+  }
+
+  // GET /api/corpus/:filename — leer un texto (con parsing de frontmatter)
   if (pathname.startsWith("/api/corpus/") && req.method === "GET") {
     const filename = decodeURIComponent(pathname.slice("/api/corpus/".length));
     if (filename.includes("..") || filename.includes("/")) {
@@ -276,8 +320,9 @@ async function handleApi(req, res, pathname) {
     }
     const filePath = path.join(CORPUS, filename);
     try {
-      const text = await readTextSmart(filePath);
-      return sendJson(res, 200, { filename, text, length: text.length });
+      const raw = await readTextSmart(filePath);
+      const { meta, body } = parseFrontmatter(raw);
+      return sendJson(res, 200, { filename, text: body, meta, length: body.length });
     } catch {
       return sendJson(res, 404, { error: "archivo no encontrado" });
     }

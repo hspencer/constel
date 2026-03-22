@@ -12,24 +12,13 @@
   height: 100%;
 }
 
-/* Nodos del grafo */
-.map-node circle {
-  stroke: var(--surface);
-  stroke-width: 1.5;
-  cursor: pointer;
-  transition: r 0.2s var(--ease);
-}
-
-.map-node circle:hover {
-  stroke-width: 2.5;
-}
-
+/* Nodos del grafo (modo título) */
 .map-node text {
   fill: var(--ink);
-  font-size: 11px;
   pointer-events: all;
   text-anchor: middle;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
 
 .map-link {
@@ -66,11 +55,89 @@
   font-weight: 600;
 }
 
+.theme-title-input {
+  flex: 1;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  padding: var(--space-xs) 0;
+  outline: none;
+  font-family: var(--font);
+}
+
+.theme-title-input:focus {
+  border-bottom-color: var(--accent);
+}
+
 .theme-concepts {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-xs);
+}
+
+/* Concept tags */
+.concept-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid;
+  border-radius: 12px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+}
+
+.concept-tag:hover {
+  filter: brightness(1.1);
+}
+
+.concept-tag.removable .tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.625rem;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-left: 2px;
+  padding: 0;
+}
+
+.concept-tag.removable:hover .tag-remove {
+  opacity: 0.6;
+}
+
+.concept-tag.removable .tag-remove:hover {
+  opacity: 1;
+  background: var(--danger, #c44);
+  color: white;
+}
+
+.concept-tag.addable {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.concept-tag.addable:hover {
+  opacity: 1;
+  border-style: solid;
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.ungrouped-picker {
+  margin-bottom: 0;
 }
 
 /* Editor de notas */

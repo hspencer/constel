@@ -48,6 +48,12 @@ function applyRoute() {
     panel.classList.toggle("active", panel.id === `panel-${tab}`);
   });
 
+  // mostrar título del texto solo en reader
+  const titleEl = document.getElementById("tabSourceTitle");
+  if (titleEl) {
+    titleEl.classList.toggle("visible", tab === "reader");
+  }
+
   // notificar callbacks
   const fns = tabCallbacks.get(tab) || [];
   for (const fn of fns) {

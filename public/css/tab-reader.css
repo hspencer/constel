@@ -1,23 +1,122 @@
 /* Tab 2: Lector */
 
-/* ── Layout del reader: sidebar | resizer | minimap | texto ────────────── */
+/* ── Layout: gloss | resizer | minimap | [detail] | texto ────────────── */
 .reader-layout {
   display: flex;
   width: 100%;
   height: 100%;
 }
 
-.reader-sidebar {
-  width: 420px;
-  min-width: 200px;
-  max-width: 60vw;
+/* ── Glosa cronológica (izquierda) ───────────────────────────────────── */
+.reader-gloss {
+  width: 280px;
+  min-width: 160px;
+  max-width: 50vw;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-right: none;
+  flex-shrink: 0;
 }
 
-/* ── Resizer (drag handle entre sidebar y texto) ─────────────────────── */
+.gloss-scroll {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.gloss-footer {
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.6875rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+/* Gloss list: normal flow, no absolute positioning */
+.gloss-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-xs) 0;
+}
+
+.gloss-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 3px var(--space-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--ink);
+  border-left: 3px solid transparent;
+}
+
+.gloss-item:hover {
+  background: var(--surface-alt);
+}
+
+.gloss-item.selected {
+  background: var(--mark-bg);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.gloss-item.selected .gloss-label {
+  font-weight: 600;
+}
+
+/* Hierarchy: level 0 = prominent, level 2 = subdued */
+.gloss-item.level-0 {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+
+.gloss-item.level-1 {
+  padding-left: calc(var(--space-sm) + 1em);
+  font-weight: 500;
+}
+
+.gloss-item.level-2 {
+  padding-left: calc(var(--space-sm) + 2em);
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.gloss-item.level-2:hover,
+.gloss-item.level-2.selected {
+  color: var(--accent);
+}
+
+.gloss-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gloss-count {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  background: var(--surface-alt);
+  padding: 0 5px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.gloss-item.selected .gloss-count {
+  background: var(--accent);
+  color: white;
+}
+
+/* ── Resizer ─────────────────────────────────────────────────────────── */
 .reader-resizer {
   width: 6px;
   flex-shrink: 0;
@@ -52,6 +151,227 @@
   opacity: 1;
 }
 
+/* ── Minimap vertical ────────────────────────────────────────────────── */
+.reader-minimap-strip {
+  width: 32px;
+  flex-shrink: 0;
+  position: relative;
+  background: var(--surface-alt);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.reader-minimap-strip .minimap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.minimap-band {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  min-height: 2px;
+  border-radius: 1px;
+  opacity: 0.7;
+}
+
+.minimap-viewport {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(45, 106, 90, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.minimap-stats {
+  position: absolute;
+  bottom: var(--space-xs);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.5625rem;
+  color: var(--muted);
+  gap: 2px;
+  pointer-events: none;
+}
+
+/* ── Concept detail panel (between minimap and text) ─────────────────── */
+.concept-detail-panel {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.concept-detail-panel[hidden] {
+  display: none !important;
+}
+
+.concept-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.concept-detail-label {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  padding: var(--space-xs) 0;
+  outline: none;
+  font-family: var(--font);
+}
+
+.concept-detail-label:focus {
+  border-bottom-color: var(--accent);
+}
+
+.concept-detail-excerpts {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* ── Excerpt group headers ────────────────────────────────────────────── */
+.excerpt-group-header {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-sm) var(--space-sm) var(--space-xs);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.excerpt-group-header.current {
+  color: var(--accent);
+}
+
+.excerpt-group-header.other {
+  margin-top: var(--space-sm);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-sm);
+}
+
+.excerpt-group-count {
+  font-size: 0.625rem;
+  background: var(--surface-alt);
+  padding: 0 5px;
+  border-radius: 8px;
+  min-width: 14px;
+  text-align: center;
+}
+
+.excerpt-group-header.current .excerpt-group-count {
+  background: var(--accent);
+  color: white;
+}
+
+/* ── Excerpt items ───────────────────────────────────────────────────── */
+.concept-detail-excerpt {
+  padding: var(--space-xs) var(--space-sm);
+  margin-bottom: var(--space-xs);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
+  cursor: pointer;
+  position: relative;
+}
+
+.concept-detail-excerpt.local {
+  border-left-color: var(--accent);
+}
+
+.concept-detail-excerpt.other-source {
+  border-left-color: var(--muted);
+  opacity: 0.75;
+}
+
+.concept-detail-excerpt.other-source:hover {
+  opacity: 1;
+}
+
+.concept-detail-excerpt:hover {
+  background: var(--mark-bg);
+}
+
+.concept-detail-excerpt .excerpt-source {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.concept-detail-excerpt .excerpt-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.concept-detail-excerpt:hover .excerpt-remove {
+  opacity: 1;
+}
+
+.concept-detail-excerpt .excerpt-remove:hover {
+  background: var(--danger, #c44);
+  color: white;
+}
+
+.concept-detail-actions {
+  padding: var(--space-sm);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger, #c44);
+  border: 1px solid var(--danger, #c44);
+}
+
+.btn-danger:hover {
+  background: var(--danger, #c44);
+  color: white;
+}
+
+/* ── Texto del lector (derecha) ──────────────────────────────────────── */
 .reader-text-panel {
   flex: 1;
   min-width: 300px;
@@ -60,7 +380,6 @@
   overflow: hidden;
 }
 
-/* ── Texto del lector ──────────────────────────────────────────────────── */
 .reader-content {
   font-family: var(--font);
   font-size: var(--font-size-base);
@@ -71,33 +390,35 @@
   word-wrap: break-word;
 }
 
-/* ── Excerpts marcados en el texto ─────────────────────────────────────── */
+/* ── Excerpts marcados ───────────────────────────────────────────────── */
 .reader-content mark {
   background: var(--mark-bg);
+  color: var(--ink);
   border-bottom: 2px solid var(--accent);
   padding: 1px 2px;
   border-radius: 2px;
   cursor: pointer;
   transition: background var(--duration) var(--ease);
+  text-decoration: none;
 }
 
 .reader-content mark:hover {
-  background: var(--accent-light);
+  background: var(--mark-bg-hover);
 }
 
 .reader-content mark.highlight-active {
-  background: var(--accent-light) !important;
+  background: var(--mark-bg-hover) !important;
   outline: 2px solid var(--accent);
   animation: flash-new 1.5s ease-out;
 }
 
 @keyframes flash-new {
-  0% { outline-width: 4px; outline-color: var(--accent); background: var(--accent-light) !important; }
+  0% { outline-width: 4px; background: var(--mark-bg-hover) !important; }
   50% { outline-width: 2px; }
-  100% { outline-width: 2px; outline-color: transparent; }
+  100% { outline-width: 0px; }
 }
 
-/* ── Excerpt tooltip (hover sobre highlights) ──────────────────────────── */
+/* ── Excerpt tooltip ─────────────────────────────────────────────────── */
 .excerpt-tooltip {
   position: fixed;
   z-index: 1100;
@@ -155,7 +476,7 @@
   background: rgba(255,255,255,0.15);
 }
 
-/* ── Modo "agregar sección" ─────────────────────────────────────────────── */
+/* ── Modo "agregar sección" ──────────────────────────────────────────── */
 .reader-content.add-section-mode {
   cursor: text;
   outline: 2px dashed var(--accent);
@@ -167,7 +488,6 @@
   background: rgba(45, 106, 90, 0.3);
 }
 
-/* Highlight temporal mientras se escribe el concepto */
 .reader-content mark.temp-highlight {
   background: rgba(45, 106, 90, 0.25);
   border-bottom: 2px dashed var(--accent);
@@ -180,224 +500,7 @@
   50% { background: rgba(45, 106, 90, 0.15); }
 }
 
-/* ── Minimap vertical (barra angosta entre sidebar y texto) ────────────── */
-.reader-minimap-strip {
-  width: 32px;
-  flex-shrink: 0;
-  position: relative;
-  background: var(--surface-alt);
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.reader-minimap-strip .minimap {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.minimap-band {
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  min-height: 2px;
-  border-radius: 1px;
-  opacity: 0.7;
-}
-
-.minimap-viewport {
-  position: absolute;
-  left: 0;
-  right: 0;
-  background: rgba(45, 106, 90, 0.12);
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  pointer-events: none;
-}
-
-.minimap-stats {
-  position: absolute;
-  bottom: var(--space-xs);
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 0.5625rem;
-  color: var(--muted);
-  gap: 2px;
-  pointer-events: none;
-}
-
-/* ── Sidebar concept map ───────────────────────────────────────────────── */
-.reader-sidebar .panel-content {
-  padding: 0;
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.reader-sidebar .panel-content svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* ── Concept detail panel (below map) ──────────────────────────────────── */
-.concept-detail {
-  border-top: 1px solid var(--border);
-  max-height: 45%;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-}
-
-.concept-detail[hidden] {
-  display: none;
-}
-
-.concept-detail-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm);
-  border-bottom: 1px solid var(--border);
-}
-
-.concept-detail-label {
-  flex: 1;
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--ink);
-  padding: var(--space-xs) 0;
-  outline: none;
-  font-family: var(--font);
-}
-
-.concept-detail-label:focus {
-  border-bottom-color: var(--accent);
-}
-
-.concept-detail-excerpts {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-xs) var(--space-sm);
-}
-
-.concept-detail-excerpt {
-  padding: var(--space-xs) var(--space-sm);
-  margin-bottom: var(--space-xs);
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
-  background: var(--surface-alt);
-  border-radius: var(--radius);
-  border-left: 3px solid var(--accent);
-  cursor: pointer;
-  position: relative;
-}
-
-.concept-detail-excerpt:hover {
-  background: var(--mark-bg);
-}
-
-.concept-detail-excerpt .excerpt-source {
-  font-size: 0.6875rem;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.concept-detail-excerpt .excerpt-remove {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 18px;
-  height: 18px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.concept-detail-excerpt:hover .excerpt-remove {
-  opacity: 1;
-}
-
-.concept-detail-excerpt .excerpt-remove:hover {
-  background: var(--danger, #c44);
-  color: white;
-}
-
-.concept-detail-actions {
-  padding: var(--space-sm);
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-}
-
-.btn-danger {
-  background: transparent;
-  color: var(--danger, #c44);
-  border: 1px solid var(--danger, #c44);
-}
-
-.btn-danger:hover {
-  background: var(--danger, #c44);
-  color: white;
-}
-
-/* ── Lista de conceptos (fallback) ─────────────────────────────────────── */
-.concept-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.concept-list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration) var(--ease);
-  font-size: var(--font-size-sm);
-}
-
-.concept-list-item:hover {
-  background: var(--surface-alt);
-}
-
-.concept-list-item .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-right: var(--space-sm);
-}
-
-.concept-list-item .label {
-  flex: 1;
-}
-
-.concept-list-item .count {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-/* ── Feedback positivo al crear excerpt ────────────────────────────────── */
+/* ── Toast ────────────────────────────────────────────────────────────── */
 .excerpt-created-toast {
   position: fixed;
   bottom: var(--space-lg);

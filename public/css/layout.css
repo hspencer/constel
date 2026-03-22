@@ -76,8 +76,40 @@ body {
   border-bottom-color: var(--accent);
 }
 
-.tab-icon {
-  font-size: 1rem;
+/* ── Título del texto activo (en la tab bar) ─────────────────────────── */
+.tab-source-title {
+  display: none;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+  padding: 0 var(--space-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50vw;
+}
+
+.tab-source-title.visible {
+  display: flex;
+}
+
+.tab-back-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  transition: background var(--duration) var(--ease);
+  flex-shrink: 0;
+}
+
+.tab-back-btn:hover {
+  background: var(--surface-alt);
 }
 
 /* ── Tab panels ────────────────────────────────────────────────────────── */

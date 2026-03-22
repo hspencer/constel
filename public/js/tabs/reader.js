@@ -11,15 +11,16 @@ import { renderHighlightedText, scrollToExcerpt, getRenderedSourceText } from ".
 import { initExcerptPopup } from "../components/popup.js";
 import { initAutocomplete } from "../components/autocomplete.js";
 import { renderMinimap } from "../components/minimap.js";
-import { renderConceptMap } from "../components/concept-map.js";
+import { renderConceptGloss } from "../components/concept-gloss.js";
 import { getSourceText } from "./sources.js";
 
 let currentSourceId = null;
 let currentText = null;
 let popupController = null;
 let autocompleteController = null;
-let mapSimulation = null;
+let glossController = null;
 let selectedConceptId = null;
+let lastExcerptHash = "";
 
 export function initReaderTab() {
   const popup = document.getElementById("excerptPopup");
@@ -27,21 +28,18 @@ export function initReaderTab() {
   const input = document.getElementById("conceptInput");
   const dropdown = document.getElementById("autocompleteDropdown");
 
-  // inicializar popup
   popupController = initExcerptPopup({
     popup,
     readerContent,
     onCreateExcerpt: handleCreateExcerpt,
   });
 
-  // inicializar autocomplete dentro del popup
   const createBtn = document.getElementById("createExcerpt");
   autocompleteController = initAutocomplete(input, dropdown, (conceptData) => {
     input.value = conceptData.label;
     createBtn.click();
   });
 
-  // botón volver
   document.getElementById("backToSources")?.addEventListener("click", () => {
     navigateTo("sources");
   });
@@ -62,19 +60,16 @@ export function initReaderTab() {
     }
   });
 
-  // concept detail: add section (new excerpt for this concept)
+  // concept detail: add section
   document.getElementById("conceptDetailAddExcerpt")?.addEventListener("click", () => {
     if (!selectedConceptId || !currentSourceId) return;
     enterAddSectionMode(selectedConceptId);
   });
 
-  // concept detail: rename on blur/enter
+  // concept detail: rename
   const labelInput = document.getElementById("conceptDetailLabel");
   labelInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      labelInput.blur();
-    }
+    if (e.key === "Enter") { e.preventDefault(); labelInput.blur(); }
   });
   labelInput?.addEventListener("blur", () => {
     if (!selectedConceptId) return;
@@ -85,14 +80,24 @@ export function initReaderTab() {
     }
   });
 
-  // re-renderizar cuando cambia el estado
+  // state changes → selective re-render
   subscribe(() => {
-    if (currentSourceId && currentText) {
-      renderReader(currentSourceId, currentText);
+    if (!currentSourceId || !currentText) return;
+
+    const hash = computeExcerptHash();
+    const changed = hash !== lastExcerptHash;
+
+    if (changed) {
+      lastExcerptHash = hash;
+      renderTextAndMinimap(currentSourceId, currentText);
+      rebuildGloss(currentSourceId, currentText.length);
+    }
+
+    if (selectedConceptId && changed) {
+      renderConceptDetailExcerpts(selectedConceptId);
     }
   });
 
-  // resizer drag
   initResizer();
 }
 
@@ -100,8 +105,9 @@ export async function onReaderActivated(params) {
   const sourceId = params.src;
   if (!sourceId) return;
 
+  const preservedConceptId = selectedConceptId;
+
   if (sourceId === currentSourceId && currentText) {
-    renderReader(currentSourceId, currentText);
     if (params.exc) {
       setTimeout(() => {
         scrollToExcerpt(document.getElementById("readerTextContent"), params.exc);
@@ -113,9 +119,13 @@ export async function onReaderActivated(params) {
   const src = getSource(sourceId);
   if (!src) return;
 
-  document.getElementById("readerTitle").textContent = src.title || src.filename;
+  // Show title in tab bar
+  const title = src.title || src.filename;
+  document.getElementById("readerTitle").textContent = title;
+  document.getElementById("tabSourceTitle").classList.add("visible");
 
   currentSourceId = sourceId;
+  lastExcerptHash = "";
   const readerContent = document.getElementById("readerTextContent");
   readerContent.innerHTML = `<p class="placeholder">Cargando...</p>`;
 
@@ -125,18 +135,41 @@ export async function onReaderActivated(params) {
     return;
   }
 
-  closeConceptDetail();
-  renderReader(sourceId, currentText);
+  lastExcerptHash = computeExcerptHash();
+  renderTextAndMinimap(sourceId, currentText);
+  rebuildGloss(sourceId, currentText.length);
+
+  // restore concept selection
+  if (preservedConceptId && state.concepts[preservedConceptId]) {
+    selectedConceptId = preservedConceptId;
+    const panel = document.getElementById("conceptDetail");
+    const labelInput = document.getElementById("conceptDetailLabel");
+    panel.hidden = false;
+    labelInput.value = state.concepts[preservedConceptId].label;
+    renderConceptDetailExcerpts(preservedConceptId);
+    if (glossController) glossController.update(preservedConceptId);
+
+    const exc = params.exc
+      ? params.exc
+      : getExcerptsForSource(sourceId).find(e => e.conceptIds.includes(preservedConceptId))?.id;
+    if (exc) {
+      setTimeout(() => scrollToExcerpt(document.getElementById("readerTextContent"), exc), 150);
+    }
+  } else {
+    closeConceptDetail();
+    if (params.exc) {
+      setTimeout(() => scrollToExcerpt(document.getElementById("readerTextContent"), params.exc), 150);
+    }
+  }
 }
 
-function renderReader(sourceId, text) {
+// ── Render helpers ──────────────────────────────────────────────────────
+
+function renderTextAndMinimap(sourceId, text) {
   const readerContent = document.getElementById("readerTextContent");
   const minimapContainer = document.getElementById("readerMinimap");
-  const conceptMapContainer = document.getElementById("readerConceptList");
-  const conceptCount = document.getElementById("readerConceptCount");
 
   renderHighlightedText(readerContent, text, sourceId, (excerptId) => {
-    // click en un highlight → mostrar detalle del primer concepto
     const exc = state.excerpts[excerptId];
     if (exc && exc.conceptIds.length > 0) {
       openConceptDetail(exc.conceptIds[0]);
@@ -144,42 +177,34 @@ function renderReader(sourceId, text) {
   });
 
   renderMinimap(minimapContainer, sourceId, text.length, readerContent);
-  renderReaderConceptMap(conceptMapContainer, conceptCount, sourceId);
-
-  // actualizar detalle si hay uno abierto
-  if (selectedConceptId) {
-    renderConceptDetailExcerpts(selectedConceptId);
-  }
 }
 
-function renderReaderConceptMap(container, countEl, sourceId) {
-  const excerpts = getExcerptsForSource(sourceId);
+function rebuildGloss(sourceId, textLength) {
+  const container = document.getElementById("readerGlossList");
+  const countEl = document.getElementById("readerConceptCount");
 
+  const excerpts = getExcerptsForSource(sourceId);
   const conceptIds = new Set();
   for (const exc of excerpts) {
     for (const cid of exc.conceptIds) conceptIds.add(cid);
   }
   countEl.textContent = conceptIds.size;
 
-  if (!conceptIds.size) {
-    container.innerHTML = `<p class="placeholder" style="font-size: var(--font-size-sm)">
-      Selecciona texto para crear el primer concepto [a]
-    </p>`;
-    return;
-  }
+  if (glossController) glossController.cleanup();
 
-  if (mapSimulation) { mapSimulation.stop(); mapSimulation = null; }
-
-  mapSimulation = renderConceptMap(container, {
-    style: "title",
-    sourceId,
+  glossController = renderConceptGloss(container, sourceId, textLength, {
     onClickConcept: (conceptId) => {
-      openConceptDetail(conceptId);
+      if (selectedConceptId === conceptId) {
+        closeConceptDetail();
+      } else {
+        openConceptDetail(conceptId);
+      }
     },
+    selectedConceptId,
   });
 }
 
-// ── Concept Detail Panel ──────────────────────────────────────────────────
+// ── Concept Detail Panel ──────────────────────────────────────────────
 
 function openConceptDetail(conceptId) {
   const c = state.concepts[conceptId];
@@ -191,10 +216,12 @@ function openConceptDetail(conceptId) {
 
   panel.hidden = false;
   labelInput.value = c.label;
-
   renderConceptDetailExcerpts(conceptId);
 
-  // scroll al primer excerpt de este concepto en el texto
+  // update gloss selection
+  if (glossController) glossController.update(conceptId);
+
+  // scroll to first excerpt in current text
   const excerpts = getExcerptsForSource(currentSourceId);
   const firstExc = excerpts.find(e => e.conceptIds.includes(conceptId));
   if (firstExc) {
@@ -204,8 +231,8 @@ function openConceptDetail(conceptId) {
 
 function closeConceptDetail() {
   selectedConceptId = null;
-  const panel = document.getElementById("conceptDetail");
-  panel.hidden = true;
+  document.getElementById("conceptDetail").hidden = true;
+  if (glossController) glossController.update(null);
 }
 
 function renderConceptDetailExcerpts(conceptId) {
@@ -213,24 +240,42 @@ function renderConceptDetailExcerpts(conceptId) {
   const allExcerpts = getExcerptsForConcept(conceptId);
 
   if (!allExcerpts.length) {
-    container.innerHTML = `<p class="placeholder" style="font-size: var(--font-size-sm)">Sin excerpts</p>`;
+    container.innerHTML = `<p class="placeholder" style="font-size:var(--font-size-sm)">Sin excerpts</p>`;
     return;
   }
 
-  container.innerHTML = allExcerpts.map(exc => {
-    const src = state.sources[exc.sourceId];
-    const srcLabel = src ? (src.title || src.filename) : "?";
-    const preview = exc.text.length > 120 ? exc.text.slice(0, 120) + "…" : exc.text;
-    const isCurrentSource = exc.sourceId === currentSourceId;
+  // Split into current source vs. others
+  const local = allExcerpts
+    .filter(e => e.sourceId === currentSourceId)
+    .sort((a, b) => a.start - b.start);
 
-    return `<div class="concept-detail-excerpt${isCurrentSource ? "" : " other-source"}" data-exc-id="${exc.id}" data-source-id="${exc.sourceId}">
-      <button class="excerpt-remove" data-exc-id="${exc.id}" title="Desvincular de este concepto">✕</button>
-      §&ensp;${escapeHtml(preview)}
-      <div class="excerpt-source">${escapeHtml(srcLabel)}</div>
-    </div>`;
-  }).join("");
+  const others = allExcerpts
+    .filter(e => e.sourceId !== currentSourceId)
+    .sort((a, b) => {
+      const sa = state.sources[a.sourceId]?.title || "";
+      const sb = state.sources[b.sourceId]?.title || "";
+      return sa.localeCompare(sb) || a.start - b.start;
+    });
 
-  // click en excerpt → scroll o navegar
+  let html = "";
+
+  // ── Secciones in vivo (texto actual)
+  if (local.length) {
+    const currentSrc = state.sources[currentSourceId];
+    const currentLabel = currentSrc ? (currentSrc.title || currentSrc.filename) : "Texto actual";
+    html += `<div class="excerpt-group-header current">§ en este texto <span class="excerpt-group-count">${local.length}</span></div>`;
+    html += local.map(exc => renderExcerptItem(exc, true)).join("");
+  }
+
+  // ── Secciones en otros textos
+  if (others.length) {
+    html += `<div class="excerpt-group-header other">En otros textos <span class="excerpt-group-count">${others.length}</span></div>`;
+    html += others.map(exc => renderExcerptItem(exc, false)).join("");
+  }
+
+  container.innerHTML = html;
+
+  // click excerpt → scroll or navigate
   container.querySelectorAll(".concept-detail-excerpt").forEach(el => {
     el.addEventListener("click", (e) => {
       if (e.target.classList.contains("excerpt-remove")) return;
@@ -240,19 +285,17 @@ function renderConceptDetailExcerpts(conceptId) {
       if (srcId === currentSourceId) {
         scrollToExcerpt(document.getElementById("readerTextContent"), excId);
       } else {
-        // navegar al otro source y al excerpt
         navigateTo("reader", { src: srcId, exc: excId });
       }
     });
   });
 
-  // click ✕ → desvincular excerpt de este concepto
+  // ✕ remove
   container.querySelectorAll(".excerpt-remove").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const excId = btn.dataset.excId;
       removeConceptFromExcerpt(excId, conceptId);
-      // si el excerpt queda sin conceptos, eliminar el excerpt
       const exc = state.excerpts[excId];
       if (exc && exc.conceptIds.length === 0) {
         removeExcerpt(excId);
@@ -261,11 +304,32 @@ function renderConceptDetailExcerpts(conceptId) {
   });
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function renderExcerptItem(exc, isLocal) {
+  const src = state.sources[exc.sourceId];
+  const srcLabel = src ? (src.title || src.filename) : "?";
+  const preview = exc.text.length > 140 ? exc.text.slice(0, 140) + "…" : exc.text;
+
+  return `<div class="concept-detail-excerpt${isLocal ? " local" : " other-source"}" data-exc-id="${exc.id}" data-source-id="${exc.sourceId}">
+    <button class="excerpt-remove" data-exc-id="${exc.id}" title="Desvincular">✕</button>
+    §&ensp;${escapeHtml(preview)}
+    ${isLocal ? "" : `<div class="excerpt-source">${escapeHtml(srcLabel)}</div>`}
+  </div>`;
+}
+
 function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// ── Create excerpt ────────────────────────────────────────────────────────
+function computeExcerptHash() {
+  const excerpts = getExcerptsForSource(currentSourceId);
+  // include concept labels to detect renames
+  return excerpts.map(e => e.id + ":" + e.conceptIds.join(",")).join("|")
+    + "|c:" + Object.values(state.concepts).map(c => c.id + c.label).join(",");
+}
+
+// ── Create excerpt ────────────────────────────────────────────────────
 
 function handleCreateExcerpt({ text, start, end, conceptLabel }) {
   if (!currentSourceId || !conceptLabel) return;
@@ -290,13 +354,12 @@ function handleCreateExcerpt({ text, start, end, conceptLabel }) {
   showToast(`§ marcado como [${conceptLabel}]`);
 
   setTimeout(() => {
-    const readerContent = document.getElementById("readerTextContent");
-    scrollToExcerpt(readerContent, excerptId);
+    scrollToExcerpt(document.getElementById("readerTextContent"), excerptId);
     openConceptDetail(conceptId);
   }, 150);
 }
 
-// ── Add section mode ──────────────────────────────────────────────────────
+// ── Add section mode ──────────────────────────────────────────────────
 
 let addSectionConceptId = null;
 
@@ -310,7 +373,6 @@ function enterAddSectionMode(conceptId) {
 
   showToast(`Selecciona texto para agregar otra § a [${c.label}]`);
 
-  // listener temporal para capturar la selección
   function onMouseUp() {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) return;
@@ -319,11 +381,9 @@ function enterAddSectionMode(conceptId) {
     const selectedText = sel.toString().trim();
     if (!selectedText) return;
 
-    // calcular offsets en el texto original
     const sourceText = getRenderedSourceText();
     const container = document.getElementById("readerTextContent");
 
-    // usar un TreeWalker para calcular el offset real
     const startOffset = getTextOffset(container, range.startContainer, range.startOffset);
     const endOffset = getTextOffset(container, range.endContainer, range.endOffset);
 
@@ -332,7 +392,6 @@ function enterAddSectionMode(conceptId) {
       return;
     }
 
-    // crear excerpt vinculado al concepto
     const excerptId = addExcerpt({
       sourceId: currentSourceId,
       text: sourceText.slice(startOffset, endOffset),
@@ -354,7 +413,6 @@ function enterAddSectionMode(conceptId) {
 
   readerContent.addEventListener("mouseup", onMouseUp, { once: true });
 
-  // ESC para cancelar
   function onKeyDown(e) {
     if (e.key === "Escape") {
       exitAddSectionMode();
@@ -367,22 +425,14 @@ function enterAddSectionMode(conceptId) {
 
 function exitAddSectionMode() {
   addSectionConceptId = null;
-  const readerContent = document.getElementById("readerTextContent");
-  readerContent.classList.remove("add-section-mode");
+  document.getElementById("readerTextContent").classList.remove("add-section-mode");
 }
 
-/**
- * Calcula el offset de texto plano dentro del container,
- * dado un nodo DOM y un offset dentro de ese nodo.
- */
 function getTextOffset(container, node, offset) {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
   let pos = 0;
-
   while (walker.nextNode()) {
-    if (walker.currentNode === node) {
-      return pos + offset;
-    }
+    if (walker.currentNode === node) return pos + offset;
     pos += walker.currentNode.textContent.length;
   }
   return -1;
@@ -401,8 +451,8 @@ function showToast(message) {
 
 function initResizer() {
   const resizer = document.getElementById("readerResizer");
-  const sidebar = document.getElementById("readerSidebar");
-  if (!resizer || !sidebar) return;
+  const gloss = document.getElementById("readerGloss");
+  if (!resizer || !gloss) return;
 
   let startX = 0;
   let startW = 0;
@@ -410,7 +460,7 @@ function initResizer() {
   function onMouseDown(e) {
     e.preventDefault();
     startX = e.clientX;
-    startW = sidebar.offsetWidth;
+    startW = gloss.offsetWidth;
     resizer.classList.add("dragging");
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
@@ -420,8 +470,8 @@ function initResizer() {
 
   function onMouseMove(e) {
     const dx = e.clientX - startX;
-    const newW = Math.max(200, Math.min(window.innerWidth * 0.6, startW + dx));
-    sidebar.style.width = newW + "px";
+    const newW = Math.max(160, Math.min(window.innerWidth * 0.5, startW + dx));
+    gloss.style.width = newW + "px";
   }
 
   function onMouseUp() {
@@ -430,10 +480,12 @@ function initResizer() {
     document.body.style.userSelect = "";
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
+    // rebuild gloss for new dimensions
     if (currentSourceId && currentText) {
-      const container = document.getElementById("readerConceptList");
-      const countEl = document.getElementById("readerConceptCount");
-      renderReaderConceptMap(container, countEl, currentSourceId);
+      rebuildGloss(currentSourceId, currentText.length);
+      if (selectedConceptId && glossController) {
+        glossController.update(selectedConceptId);
+      }
     }
   }
 

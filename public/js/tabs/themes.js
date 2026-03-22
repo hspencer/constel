@@ -31,27 +31,15 @@ function renderMap() {
   const container = document.getElementById("mapContainer");
   if (!container) return;
 
-  // limpiar simulación anterior
   if (simulation) { simulation.stop(); simulation = null; }
 
-  const style = document.querySelector("[data-map-style].active")?.dataset.mapStyle || "circular";
-
-  simulation = renderConceptMap(container, {
-    style,
+  const ctrl = renderConceptMap(container, {
     onClickConcept: (conceptId) => {
       currentSelection = { type: "concept", id: conceptId };
       renderThemeDetail();
     },
   });
-
-  // controles de estilo del mapa
-  document.querySelectorAll("[data-map-style]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll("[data-map-style]").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      renderMap();
-    });
-  });
+  if (ctrl) simulation = ctrl.simulation;
 }
 
 function renderThemeDetail() {
@@ -223,6 +211,7 @@ function renderThemeNotes(container, titleEl, themeId) {
   titleEl.textContent = theme.label;
 
   const concepts = getConceptsForTheme(themeId);
+  const ungrouped = getUngroupedConcepts();
   const notes = getNotesForTheme(themeId);
   const allExcerpts = concepts.flatMap(c => getExcerptsForConcept(c.id));
 
@@ -231,19 +220,41 @@ function renderThemeNotes(container, titleEl, themeId) {
   const excerpts = allExcerpts.filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true; });
 
   let html = `
-    <div class="theme-section-header" style="margin-bottom: var(--space-md)">
-      <span class="theme-color-dot" style="background: ${theme.color}"></span>
-      <h3>${escapeHtml(theme.label)}</h3>
-      <span class="badge">${concepts.length} conceptos · ${excerpts.length} §</span>
+    <div class="theme-detail-top">
+      <div class="theme-section-header" style="margin-bottom: var(--space-xs)">
+        <span class="theme-color-dot" style="background: ${theme.color}"></span>
+        <input class="theme-title-input" id="themeTitleInput" type="text" value="${escapeHtml(theme.label)}" spellcheck="false" />
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-md)">
+        <span class="badge">${concepts.length} conceptos · ${excerpts.length} §</span>
+        <button class="btn-sm btn-danger" id="deleteThemeBtn">Eliminar tema</button>
+      </div>
     </div>
 
-    <div class="theme-concepts" style="margin-bottom: var(--space-md)">
-      ${concepts.map(c => `
-        <span class="concept-tag" style="border-color: ${theme.color}; background: ${theme.color}20"
-              data-select-concept="${c.id}">
-          ${escapeHtml(c.label)}
-        </span>
-      `).join("")}
+    <div class="theme-concepts-section" style="margin-bottom: var(--space-md)">
+      <label style="font-size: var(--font-size-sm); color: var(--muted); display: block; margin-bottom: var(--space-xs)">Conceptos contenidos:</label>
+      <div class="theme-concepts">
+        ${concepts.map(c => `
+          <span class="concept-tag removable" style="border-color: ${theme.color}; background: ${theme.color}20"
+                data-concept-id="${c.id}" data-select-concept="${c.id}">
+            ${escapeHtml(c.label)}
+            <button class="tag-remove" data-remove-concept="${c.id}" title="Quitar del tema">✕</button>
+          </span>
+        `).join("")}
+      </div>
+      ${ungrouped.length ? `
+        <div class="add-concepts-to-theme" style="margin-top: var(--space-sm)">
+          <label style="font-size: var(--font-size-sm); color: var(--muted); display: block; margin-bottom: var(--space-xs)">Agregar conceptos:</label>
+          <div class="theme-concepts ungrouped-picker">
+            ${ungrouped.map(c => `
+              <span class="concept-tag addable" style="border-color: var(--muted)"
+                    data-add-concept="${c.id}">
+                + ${escapeHtml(c.label)}
+              </span>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
     </div>
 
     <div class="note-editor">
@@ -273,6 +284,29 @@ function renderThemeNotes(container, titleEl, themeId) {
 
   container.innerHTML = html;
 
+  // rename tema
+  const titleInput = container.querySelector("#themeTitleInput");
+  titleInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); titleInput.blur(); }
+  });
+  titleInput?.addEventListener("blur", () => {
+    const newLabel = titleInput.value.trim();
+    if (newLabel && newLabel !== theme.label) {
+      renameTheme(themeId, newLabel);
+      renderMap();
+    }
+  });
+
+  // delete tema
+  container.querySelector("#deleteThemeBtn")?.addEventListener("click", () => {
+    if (confirm(`¿Eliminar tema "${theme.label}"? Los conceptos quedarán sin agrupar.`)) {
+      removeTheme(themeId);
+      currentSelection = null;
+      renderMap();
+      renderThemeDetail();
+    }
+  });
+
   // guardar nota con debounce
   let noteTimer;
   const textarea = container.querySelector("#themeNoteText");
@@ -288,11 +322,29 @@ function renderThemeNotes(container, titleEl, themeId) {
     }, 500);
   });
 
-  // clicks
+  // click concept tag → ver detalle del concepto
   container.querySelectorAll("[data-select-concept]").forEach(tag => {
-    tag.addEventListener("click", () => {
+    tag.addEventListener("click", (e) => {
+      if (e.target.classList.contains("tag-remove")) return;
       currentSelection = { type: "concept", id: tag.dataset.selectConcept };
       renderThemeDetail();
+    });
+  });
+
+  // ✕ quitar concepto del tema
+  container.querySelectorAll("[data-remove-concept]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      moveConcept(btn.dataset.removeConcept, null);
+      renderMap();
+    });
+  });
+
+  // + agregar concepto al tema
+  container.querySelectorAll("[data-add-concept]").forEach(tag => {
+    tag.addEventListener("click", () => {
+      moveConcept(tag.dataset.addConcept, themeId);
+      renderMap();
     });
   });
 

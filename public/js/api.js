@@ -23,6 +23,7 @@ export const api = {
   newSession:   ()       => request("POST", "/api/db/new-session"),
   listCorpus:   ()       => request("GET", "/api/corpus"),
   readSource:   (name)   => request("GET", `/api/corpus/${encodeURIComponent(name)}`),
+  renameSource: (oldName, newName) => request("PUT", "/api/corpus/rename", { oldName, newName }),
   exportCsv:    ()       => request("GET", "/api/export/csv"),
   health:       ()       => request("GET", "/api/health"),
 };

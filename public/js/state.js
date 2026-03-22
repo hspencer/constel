@@ -86,7 +86,7 @@ function makeId(prefix) {
 export function addSource({ filename, title, author, date, wordCount }) {
   const id = makeId("src");
   state.sources[id] = {
-    id, filename, title: title || filename.replace(/\.txt$/, ""),
+    id, filename, title: title || filename.replace(/\.(txt|md)$/, ""),
     author: author || "", date: date || "",
     wordCount: wordCount || 0,
     addedAt: new Date().toISOString(),
@@ -101,6 +101,15 @@ export function removeSource(id) {
     if (exc.sourceId === id) delete state.excerpts[eid];
   }
   delete state.sources[id];
+  notify();
+}
+
+export function updateSource(id, fields) {
+  const s = state.sources[id];
+  if (!s) return;
+  for (const [k, v] of Object.entries(fields)) {
+    if (v !== undefined) s[k] = v;
+  }
   notify();
 }
 
@@ -313,13 +322,19 @@ export function computeConceptGraph(sourceId = null) {
   }
   const concepts = [...conceptIds].map(id => state.concepts[id]).filter(Boolean);
 
-  // nodos
-  const nodes = concepts.map(c => ({
-    id: c.id,
-    label: c.label,
-    themeId: c.themeId,
-    excerptCount: excerpts.filter(e => e.conceptIds.includes(c.id)).length,
-  }));
+  // nodos — usar TODOS los excerpts para conteo global de sources
+  const allExcerpts = Object.values(state.excerpts);
+  const nodes = concepts.map(c => {
+    const relevantExc = allExcerpts.filter(e => e.conceptIds.includes(c.id));
+    const sourceSet = new Set(relevantExc.map(e => e.sourceId));
+    return {
+      id: c.id,
+      label: c.label,
+      themeId: c.themeId,
+      excerptCount: relevantExc.length,
+      sourceCount: sourceSet.size,
+    };
+  });
 
   // construir mapa de co-ocurrencia
   const linkMap = new Map(); // "conA::conB" → { excerptShared, sourceShared }
