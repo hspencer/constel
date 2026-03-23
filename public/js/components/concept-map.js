@@ -101,10 +101,14 @@ export function renderConceptMap(container, opts = {}) {
     }
   });
 
+  let strengthFactor = 1;
+
   function collideRadius(d) {
     const s = textSizes.get(d.id);
     if (!s) return 20;
-    return Math.sqrt(s.w * s.w + s.h * s.h) / 2 + 4;
+    const base = Math.sqrt(s.w * s.w + s.h * s.h) / 2 + 4;
+    // a mayor fuerza, permitir más solapamiento
+    return base / Math.max(1, strengthFactor * 0.5);
   }
 
   // ── Simulation ──
@@ -247,7 +251,8 @@ export function renderConceptMap(container, opts = {}) {
     },
 
     setStrength(factor) {
-      // factor: 0.2 (suelto) a 2.0 (apretado)
+      // factor: 0.2 (suelto) a 6.0 (muy apretado)
+      strengthFactor = factor;
       linkForce
         .distance(d => {
           const norm = d.weight / maxWeight;
@@ -255,9 +260,15 @@ export function renderConceptMap(container, opts = {}) {
         })
         .strength(d => {
           const norm = d.weight / maxWeight;
-          return (0.1 + norm * 0.7) * factor;
+          return Math.min(1, (0.1 + norm * 0.7) * factor);
         });
-      simulation.alpha(0.5).restart();
+      // reducir repulsión y colisión con más fuerza
+      simulation.force("charge").strength(d => {
+        const base = linkedIds.has(d.id) ? -60 - fontSize(d) * 3 : -150 - fontSize(d) * 4;
+        return base / Math.max(1, factor * 0.4);
+      });
+      simulation.force("collide").radius(d => collideRadius(d));
+      simulation.alpha(0.6).restart();
     },
 
     setEdgesVisible(visible) {
