@@ -75,23 +75,54 @@ export function renderConceptMap(container, opts = {}) {
     linkG.style("display", "none");
   }
 
-  // ── Nodes (text only, no bold) ──
+  // ── Nodes (text only, no bold, multiline at 40 chars) ──
+  const MAX_CHARS = 40;
+
+  function wrapLabel(label) {
+    if (label.length <= MAX_CHARS) return [label];
+    const words = label.split(/\s+/);
+    const lines = [];
+    let current = "";
+    for (const word of words) {
+      if (current && (current + " " + word).length > MAX_CHARS) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = current ? current + " " + word : word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+
   const node = g.append("g")
     .selectAll("g")
     .data(nodes)
     .join("g")
     .attr("class", "map-node");
 
-  node.append("text")
-    .text(d => d.label)
-    .attr("text-anchor", "middle")
-    .attr("dy", "0.35em")
-    .style("font-size", d => `${fontSize(d)}px`)
-    .style("font-weight", "400")
-    .style("fill", d => getThemeColor(d.themeId))
-    .style("cursor", "pointer");
+  node.each(function(d) {
+    const textEl = d3.select(this).append("text")
+      .attr("text-anchor", "middle")
+      .style("font-size", `${fontSize(d)}px`)
+      .style("font-weight", "400")
+      .style("fill", getThemeColor(d.themeId))
+      .style("cursor", "pointer");
 
-  // ── Measure bounding boxes for collision ──
+    const lines = wrapLabel(d.label);
+    const lineH = fontSize(d) * 1.2;
+    const totalH = lines.length * lineH;
+    const startY = -totalH / 2 + lineH * 0.7;
+
+    lines.forEach((line, i) => {
+      textEl.append("tspan")
+        .attr("x", 0)
+        .attr("dy", i === 0 ? `${startY}px` : `${lineH}px`)
+        .text(line);
+    });
+  });
+
+  // ── Measure bounding boxes for collision (after tspan layout) ──
   const textSizes = new Map();
   node.each(function(d) {
     const textEl = this.querySelector("text");
@@ -101,14 +132,58 @@ export function renderConceptMap(container, opts = {}) {
     }
   });
 
-  let strengthFactor = 1;
+  // Padding around each text bounding box
+  const PAD = 4;
 
-  function collideRadius(d) {
+  function getBox(d) {
     const s = textSizes.get(d.id);
-    if (!s) return 20;
-    const base = Math.sqrt(s.w * s.w + s.h * s.h) / 2 + 4;
-    // a mayor fuerza, permitir más solapamiento
-    return base / Math.max(1, strengthFactor * 0.5);
+    if (!s) return { hw: 30, hh: 10 };
+    return { hw: s.w / 2 + PAD, hh: s.h / 2 + PAD };
+  }
+
+  /**
+   * Rectangular collision force.
+   * Prevents bounding boxes from overlapping.
+   */
+  function forceRectCollide() {
+    let _nodes;
+    const iterations = 4;
+
+    function force() {
+      for (let k = 0; k < iterations; k++) {
+        for (let i = 0; i < _nodes.length; i++) {
+          for (let j = i + 1; j < _nodes.length; j++) {
+            const a = _nodes[i];
+            const b = _nodes[j];
+            const ba = getBox(a);
+            const bb = getBox(b);
+
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const overlapX = (ba.hw + bb.hw) - Math.abs(dx);
+            const overlapY = (ba.hh + bb.hh) - Math.abs(dy);
+
+            if (overlapX > 0 && overlapY > 0) {
+              // push apart along axis of least overlap
+              if (overlapX < overlapY) {
+                const shift = overlapX / 2 * 0.5;
+                const sx = dx > 0 ? shift : -shift;
+                a.x -= sx;
+                b.x += sx;
+              } else {
+                const shift = overlapY / 2 * 0.5;
+                const sy = dy > 0 ? shift : -shift;
+                a.y -= sy;
+                b.y += sy;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    force.initialize = function(nodes) { _nodes = nodes; };
+    return force;
   }
 
   // ── Simulation ──
@@ -116,11 +191,11 @@ export function renderConceptMap(container, opts = {}) {
     .id(d => d.id)
     .distance(d => {
       const norm = d.weight / maxWeight;
-      return 120 * (1.5 - norm); // más co-ocurrencias → más cerca
+      return 60 * (1.5 - norm);
     })
     .strength(d => {
       const norm = d.weight / maxWeight;
-      return 0.1 + norm * 0.7;
+      return 0.2 + norm * 0.8;
     });
 
   // Nodos sin links visibles → periferia
@@ -138,16 +213,14 @@ export function renderConceptMap(container, opts = {}) {
     .force("link", linkForce)
     .force("charge", d3.forceManyBody()
       .strength(d => {
-        // nodos conectados se repelen moderadamente
-        // nodos sueltos se repelen más fuerte → van a la periferia
-        if (!linkedIds.has(d.id)) return -150 - fontSize(d) * 4;
-        return -60 - fontSize(d) * 3;
+        if (!linkedIds.has(d.id)) return -80;
+        return -30 - fontSize(d) * 1.5;
       })
     )
-    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.3))
-    .force("collide", d3.forceCollide(d => collideRadius(d) + 2).iterations(4))
-    .force("x", d3.forceX(width / 2).strength(d => linkedIds.has(d.id) ? 0.02 : 0.01))
-    .force("y", d3.forceY(height / 2).strength(d => linkedIds.has(d.id) ? 0.02 : 0.01));
+    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.4))
+    .force("rectCollide", forceRectCollide())
+    .force("x", d3.forceX(width / 2).strength(d => linkedIds.has(d.id) ? 0.03 : 0.01))
+    .force("y", d3.forceY(height / 2).strength(d => linkedIds.has(d.id) ? 0.03 : 0.01));
 
   node.call(makeDrag(d3, simulation));
 
@@ -252,22 +325,21 @@ export function renderConceptMap(container, opts = {}) {
 
     setStrength(factor) {
       // factor: 0.2 (suelto) a 6.0 (muy apretado)
-      strengthFactor = factor;
       linkForce
         .distance(d => {
           const norm = d.weight / maxWeight;
-          return (120 * (1.5 - norm)) / factor;
+          return (60 * (1.5 - norm)) / factor;
         })
         .strength(d => {
           const norm = d.weight / maxWeight;
-          return Math.min(1, (0.1 + norm * 0.7) * factor);
+          return Math.min(1, (0.2 + norm * 0.8) * factor);
         });
-      // reducir repulsión y colisión con más fuerza
+      // stronger center pull with higher force
+      simulation.force("center").strength(0.4 * factor);
       simulation.force("charge").strength(d => {
-        const base = linkedIds.has(d.id) ? -60 - fontSize(d) * 3 : -150 - fontSize(d) * 4;
-        return base / Math.max(1, factor * 0.4);
+        const base = linkedIds.has(d.id) ? -30 - fontSize(d) * 1.5 : -80;
+        return base / Math.max(0.5, factor * 0.3);
       });
-      simulation.force("collide").radius(d => collideRadius(d));
       simulation.alpha(0.6).restart();
     },
 

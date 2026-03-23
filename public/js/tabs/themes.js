@@ -73,7 +73,7 @@ function initMapControls() {
 
   strengthSlider?.addEventListener("input", () => {
     const val = parseInt(strengthSlider.value);
-    if (mapCtrl) mapCtrl.setStrength(val / 5); // normalize 1-30 → 0.2-6.0
+    if (mapCtrl) mapCtrl.setStrength(val / 5); // normalize 1-10 → 0.2-2.0
   });
 
   edgeToggle?.addEventListener("change", () => {

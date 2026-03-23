@@ -9,11 +9,15 @@ import { initSplitViews } from "./components/split-view.js";
 import { initSourcesTab, onSourcesActivated } from "./tabs/sources.js";
 import { initReaderTab, onReaderActivated } from "./tabs/reader.js";
 import { initThemesTab, onThemesActivated } from "./tabs/themes.js";
+import { applyTranslations, t } from "./i18n.js";
 
 // ── Arranque ────────────────────────────────────────────────────────────────
 
 async function boot() {
-  showStatus("Cargando...");
+  // 0. i18n — translate static UI
+  applyTranslations();
+
+  showStatus(t("reader.loading"));
 
   // 1. Cargar estado
   await loadState();

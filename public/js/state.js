@@ -1,7 +1,12 @@
-// state.js — store central con pub/sub y persistencia dual
+// state.js — store central con pub/sub y persistencia
 // Todas las entidades se gestionan aquí.
 
 import { api } from "./api.js";
+
+// ── Configuración ────────────────────────────────────────────────────────────
+// USE_LOCAL_STORAGE: true = usa localStorage como cache (útil para GitHub Pages)
+//                    false = solo disco vía servidor (evita datos fantasma)
+const USE_LOCAL_STORAGE = false;
 
 // ── Estado ──────────────────────────────────────────────────────────────────
 
@@ -31,8 +36,10 @@ let saveTimer = null;
 
 export function notify() {
   state.updatedAt = new Date().toISOString();
-  // localStorage inmediato
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  // localStorage (si habilitado)
+  if (USE_LOCAL_STORAGE) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  }
   // debounce disco
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveToDisk, 300);
@@ -53,23 +60,30 @@ async function saveToDisk() {
 // ── Carga inicial ───────────────────────────────────────────────────────────
 
 export async function loadState() {
-  // 1. localStorage (rápido)
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) Object.assign(state, JSON.parse(raw));
-  } catch {}
-  // 2. reconciliar con disco
+  // 1. localStorage (si habilitado)
+  if (USE_LOCAL_STORAGE) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) Object.assign(state, JSON.parse(raw));
+    } catch {}
+  }
+  // 2. disco (servidor) — siempre gana si está disponible
   try {
     const disk = await api.getDb();
     if (disk && disk.updatedAt) {
-      // disco más reciente → usar disco
-      if (!state.updatedAt || disk.updatedAt > state.updatedAt) {
+      if (!USE_LOCAL_STORAGE || !state.updatedAt || disk.updatedAt > state.updatedAt) {
         Object.assign(state, disk);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+        if (USE_LOCAL_STORAGE) {
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+        }
       }
     }
   } catch (e) {
-    console.warn("No se pudo leer del servidor:", e);
+    console.warn("No se pudo leer del servidor, usando localStorage:", e);
+  }
+  // Si localStorage desactivado, limpiar residuos
+  if (!USE_LOCAL_STORAGE) {
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }
 }
 

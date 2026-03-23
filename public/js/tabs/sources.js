@@ -81,8 +81,11 @@ async function renderSourcesList() {
 
 function renderSourceCard(src) {
   const pct = src.wordCount > 0 ? Math.round((countMarkedChars(src.id) / (src.wordCount * 5)) * 100) : 0;
-  const hasAuthor = src.author || src.participant;
-  const metaLine = [src.author, src.participant, src.date].filter(Boolean).join(" · ");
+  // Build metadata line: code · role · date
+  const codeLine = src.code || src.participant || "";
+  const roleLine = src.role || "";
+  const metaParts = [codeLine, roleLine, src.date].filter(Boolean);
+  const metaLine = metaParts.join(" · ");
 
   return `
     <div class="card source-card" data-filename="${src.filename}" data-source-id="${src.id || ""}">
@@ -120,17 +123,24 @@ async function handleSourceClick(filename, sourceId) {
     const res = await api.readSource(filename);
     const words = res.text.split(/\s+/).length;
     const meta = res.meta || {};
+    // título: code si existe (T2, D2), sino title del frontmatter, sino filename
+    const displayTitle = meta.code
+      ? `${meta.code}${meta.participant ? " — " + meta.participant : ""}`
+      : meta.title || filename.replace(/\.(txt|md)$/, "");
     const id = addSource({
       filename,
-      title: meta.title || filename.replace(/\.(txt|md)$/, ""),
+      title: displayTitle,
       author: meta.author || "",
       date: meta.date || "",
       wordCount: words,
     });
     // guardar campos extra del frontmatter
     const extra = {};
+    if (meta.code) extra.code = meta.code;
     if (meta.participant) extra.participant = meta.participant;
     if (meta.role) extra.role = meta.role;
+    if (meta.field) extra.field = meta.field;
+    if (meta.type) extra.type = meta.type;
     if (meta.notes) extra.notes = meta.notes;
     if (Object.keys(extra).length) updateSource(id, extra);
 

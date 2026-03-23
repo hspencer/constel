@@ -377,7 +377,8 @@
   min-width: 300px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .reader-content {

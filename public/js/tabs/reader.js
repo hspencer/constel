@@ -172,6 +172,8 @@ export async function onReaderActivated(params) {
 function renderTextAndMinimap(sourceId, text) {
   const readerContent = document.getElementById("readerTextContent");
   const minimapContainer = document.getElementById("readerMinimap");
+  // The scrollable container is the parent .reader-text-panel
+  const scrollContainer = document.getElementById("readerText");
 
   renderHighlightedText(readerContent, text, sourceId, (excerptId) => {
     const exc = state.excerpts[excerptId];
@@ -180,7 +182,7 @@ function renderTextAndMinimap(sourceId, text) {
     }
   });
 
-  renderMinimap(minimapContainer, sourceId, text.length, readerContent);
+  renderMinimap(minimapContainer, sourceId, text.length, scrollContainer);
 }
 
 function rebuildGloss(sourceId, textLength) {
