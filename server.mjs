@@ -356,6 +356,30 @@ async function handleApi(req, res, pathname) {
     return res.end(csv);
   }
 
+  // POST /api/import — recibir un ZIP con corpus + db
+  if (pathname === "/api/import" && req.method === "POST") {
+    try {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+
+      // body.db = JSON object de constel-db.json
+      // body.files = [{ filename, content }] textos del corpus
+      if (body.db) {
+        await writeDb(body.db);
+      }
+      if (body.files && Array.isArray(body.files)) {
+        for (const f of body.files) {
+          if (!f.filename || f.filename.includes("..") || f.filename.includes("/")) continue;
+          await fs.writeFile(path.join(CORPUS, f.filename), f.content, "utf8");
+        }
+      }
+      return sendJson(res, 200, { ok: true });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
   return sendJson(res, 404, { error: "endpoint no encontrado" });
 }
 

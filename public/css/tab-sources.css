@@ -1,5 +1,72 @@
 /* Tab 1: Fuentes */
 
+/* ── Buscador del corpus ──────────────────────────────────────────────── */
+.corpus-search {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.corpus-search input {
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.search-results[hidden] {
+  display: none;
+}
+
+.search-summary {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  padding: var(--space-xs) 0 var(--space-sm);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-sm);
+}
+
+.search-result {
+  padding: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  cursor: pointer;
+  border-left: 3px solid var(--accent);
+  transition: background 0.15s;
+}
+
+.search-result:hover {
+  background: var(--mark-bg-hover);
+}
+
+.search-result-text {
+  font-family: var(--font-reading);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.search-result-text mark {
+  background: var(--mark-bg-hover);
+  color: var(--ink);
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 600;
+}
+
+.search-result-source {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── Lista de fuentes ─────────────────────────────────────────────────── */
 .source-list {
   display: flex;
   flex-direction: column;

@@ -8,7 +8,7 @@ import { state, computeConceptGraph, getThemeColor } from "../state.js";
  * @param {HTMLElement} container
  * @param {Object} opts
  * @param {string} [opts.sourceId]
- * @param {number} [opts.distance=80]
+ * @param {number} [opts.threshold=1] - min co-excerpts to show a link
  * @param {boolean} [opts.showEdges=true]
  * @param {Function} opts.onClickConcept
  * @returns {Object|null} controller
@@ -29,7 +29,8 @@ export function renderConceptMap(container, opts = {}) {
   container.innerHTML = "";
   const width = container.clientWidth || 600;
   const height = container.clientHeight || 400;
-  let currentDistance = opts.distance || 80;
+  let currentThreshold = opts.threshold || 1;
+  const allLinks = [...links]; // keep full set for threshold filtering
 
   // ── Font size scale (no bold, only size varies) ──
   const maxExc = Math.max(1, ...nodes.map(n => n.excerptCount));
@@ -53,21 +54,21 @@ export function renderConceptMap(container, opts = {}) {
     .on("zoom", (e) => g.attr("transform", e.transform));
   svg.call(zoomBehavior);
 
-  // ── Weight normalization ──
-  const maxWeight = Math.max(1, ...links.map(l => l.weight));
+  // ── Filter links by threshold ──
+  let visibleLinks = allLinks.filter(l => l.weight >= currentThreshold);
+  const maxWeight = Math.max(1, ...allLinks.map(l => l.weight));
 
   // ── Links ──
   const linkG = g.append("g").attr("class", "map-links-group");
-  const link = linkG
+  let link = linkG
     .selectAll("line")
-    .data(links)
+    .data(visibleLinks)
     .join("line")
-    .attr("class", d => `map-link ${d.coExcerpt > 0 ? "strong" : "proximity"}`)
+    .attr("class", "map-link")
     .attr("stroke-width", d => {
       const norm = d.weight / maxWeight;
       return Math.max(0.5, norm * 3);
-    })
-    .attr("stroke-dasharray", d => d.coExcerpt > 0 ? null : "3,3");
+    });
 
   // initial edge visibility
   if (opts.showEdges === false) {
@@ -107,25 +108,27 @@ export function renderConceptMap(container, opts = {}) {
   }
 
   // ── Simulation ──
-  const linkForce = d3.forceLink(links)
+  const linkForce = d3.forceLink(visibleLinks)
     .id(d => d.id)
     .distance(d => {
-      // links fuertes → cerca; links débiles → lejos
-      const norm = d.weight / maxWeight; // 0..1
-      return currentDistance * (1.8 - norm * 1.5); // rango: 0.3x .. 1.8x de la distancia base
+      const norm = d.weight / maxWeight;
+      return 120 * (1.5 - norm); // más co-ocurrencias → más cerca
     })
     .strength(d => {
-      // links fuertes tiran mucho más
       const norm = d.weight / maxWeight;
-      return 0.05 + norm * 0.8; // 0.05 .. 0.85
+      return 0.1 + norm * 0.7;
     });
 
-  // Nodos sin links → identificarlos para empujarlos a la periferia
-  const linkedIds = new Set();
-  for (const l of links) {
-    linkedIds.add(typeof l.source === "object" ? l.source.id : l.source);
-    linkedIds.add(typeof l.target === "object" ? l.target.id : l.target);
+  // Nodos sin links visibles → periferia
+  function computeLinkedIds() {
+    const ids = new Set();
+    for (const l of visibleLinks) {
+      ids.add(typeof l.source === "object" ? l.source.id : l.source);
+      ids.add(typeof l.target === "object" ? l.target.id : l.target);
+    }
+    return ids;
   }
+  let linkedIds = computeLinkedIds();
 
   const simulation = d3.forceSimulation(nodes)
     .force("link", linkForce)
@@ -226,13 +229,35 @@ export function renderConceptMap(container, opts = {}) {
   return {
     simulation,
 
-    setDistance(dist) {
-      currentDistance = dist;
-      linkForce.distance(d => {
-        const norm = d.weight / maxWeight;
-        return dist * (1.8 - norm * 1.5);
-      });
+    setThreshold(thresh) {
+      currentThreshold = thresh;
+      visibleLinks = allLinks.filter(l => l.weight >= thresh);
+      linkedIds = computeLinkedIds();
+
+      // update links
+      link = linkG.selectAll("line")
+        .data(visibleLinks, d => `${typeof d.source === "object" ? d.source.id : d.source}::${typeof d.target === "object" ? d.target.id : d.target}`)
+        .join("line")
+        .attr("class", "map-link")
+        .attr("stroke-width", d => Math.max(0.5, (d.weight / maxWeight) * 3));
+
+      // update simulation
+      linkForce.links(visibleLinks);
       simulation.alpha(0.6).restart();
+    },
+
+    setStrength(factor) {
+      // factor: 0.2 (suelto) a 2.0 (apretado)
+      linkForce
+        .distance(d => {
+          const norm = d.weight / maxWeight;
+          return (120 * (1.5 - norm)) / factor;
+        })
+        .strength(d => {
+          const norm = d.weight / maxWeight;
+          return (0.1 + norm * 0.7) * factor;
+        });
+      simulation.alpha(0.5).restart();
     },
 
     setEdgesVisible(visible) {

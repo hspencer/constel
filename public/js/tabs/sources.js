@@ -10,6 +10,7 @@ const textCache = new Map();
 export async function initSourcesTab() {
   await renderSourcesList();
   subscribe(() => renderSourcesList());
+  initCorpusSearch();
 }
 
 export function onSourcesActivated() {
@@ -303,4 +304,117 @@ function escapeHtml(s) {
 
 function escapeAttr(s) {
   return escapeHtml(s).replace(/"/g, "&quot;");
+}
+
+// ── Búsqueda full-text en el corpus ─────────────────────────────────────────
+
+let searchTimer = null;
+let allTextsLoaded = false;
+const corpusTexts = new Map(); // sourceId → { title, text }
+
+async function loadAllTexts() {
+  if (allTextsLoaded) return;
+  const sources = Object.values(state.sources);
+  await Promise.all(sources.map(async (src) => {
+    if (corpusTexts.has(src.id)) return;
+    const text = await getSourceText(src.id);
+    if (text) {
+      corpusTexts.set(src.id, { title: src.title || src.filename, text });
+    }
+  }));
+  allTextsLoaded = true;
+}
+
+function initCorpusSearch() {
+  const input = document.getElementById("corpusSearchInput");
+  const resultsEl = document.getElementById("corpusSearchResults");
+  const listEl = document.getElementById("sourcesListContent");
+  if (!input || !resultsEl) return;
+
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const query = input.value.trim();
+
+    if (!query || query.length < 2) {
+      resultsEl.hidden = true;
+      listEl.hidden = false;
+      return;
+    }
+
+    searchTimer = setTimeout(() => runSearch(query, resultsEl, listEl), 300);
+  });
+
+  // Escape cierra búsqueda
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      input.value = "";
+      resultsEl.hidden = true;
+      listEl.hidden = false;
+    }
+  });
+}
+
+async function runSearch(query, resultsEl, listEl) {
+  await loadAllTexts();
+
+  const queryLower = query.toLowerCase();
+  const results = [];
+  const CONTEXT = 60; // chars de contexto a cada lado
+
+  for (const [sourceId, { title, text }] of corpusTexts) {
+    const textLower = text.toLowerCase();
+    let pos = 0;
+    let count = 0;
+
+    while ((pos = textLower.indexOf(queryLower, pos)) !== -1 && count < 5) {
+      const start = Math.max(0, pos - CONTEXT);
+      const end = Math.min(text.length, pos + query.length + CONTEXT);
+      const before = text.slice(start, pos);
+      const match = text.slice(pos, pos + query.length);
+      const after = text.slice(pos + query.length, end);
+
+      results.push({
+        sourceId,
+        title,
+        charPos: pos,
+        before: (start > 0 ? "…" : "") + before,
+        match,
+        after: after + (end < text.length ? "…" : ""),
+      });
+
+      pos += query.length;
+      count++;
+    }
+  }
+
+  // mostrar resultados
+  listEl.hidden = true;
+  resultsEl.hidden = false;
+
+  if (!results.length) {
+    resultsEl.innerHTML = `<div class="search-summary">Sin resultados para "${escapeHtml(query)}"</div>`;
+    return;
+  }
+
+  const textCount = new Set(results.map(r => r.sourceId)).size;
+
+  let html = `<div class="search-summary">"${escapeHtml(query)}" — ${results.length} resultado${results.length > 1 ? "s" : ""} en ${textCount} texto${textCount > 1 ? "s" : ""}</div>`;
+
+  html += results.map(r => `
+    <div class="search-result" data-source-id="${r.sourceId}" data-char-pos="${r.charPos}">
+      <div class="search-result-text">${escapeHtml(r.before)}<mark>${escapeHtml(r.match)}</mark>${escapeHtml(r.after)}</div>
+      <div class="search-result-source">${escapeHtml(r.title)}</div>
+    </div>
+  `).join("");
+
+  resultsEl.innerHTML = html;
+
+  // click → navegar al reader
+  resultsEl.querySelectorAll(".search-result").forEach(el => {
+    el.addEventListener("click", () => {
+      const sourceId = el.dataset.sourceId;
+      const charPos = parseInt(el.dataset.charPos);
+      navigateTo("reader", { src: sourceId, pos: charPos });
+    });
+  });
 }

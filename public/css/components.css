@@ -44,6 +44,17 @@
   background: var(--accent-light);
 }
 
+/* btn-primary wins over btn-sm when combined */
+.btn-primary.btn-sm {
+  color: white;
+  background: var(--accent);
+}
+
+.btn-primary.btn-sm:hover {
+  background: var(--accent-hover);
+  color: white;
+}
+
 .btn-icon {
   width: 32px;
   height: 32px;
@@ -72,11 +83,16 @@ textarea {
   padding: var(--space-sm) var(--space-md);
   background: var(--surface);
   color: var(--ink);
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border, var(--border));
   border-radius: var(--radius);
   font-size: var(--font-size-base);
   outline: none;
   transition: border-color var(--duration) var(--ease);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 input[type="text"]:focus,

@@ -44,13 +44,13 @@ function renderMap() {
   if (mapCtrl) { mapCtrl.simulation.stop(); mapCtrl = null; }
 
   // read current control values
-  const distSlider = document.getElementById("mapDistanceSlider");
+  const threshSlider = document.getElementById("mapThresholdSlider");
   const edgeToggle = document.getElementById("mapEdgeToggle");
-  const distance = distSlider ? parseInt(distSlider.value) : 80;
+  const threshold = threshSlider ? parseInt(threshSlider.value) : 1;
   const showEdges = edgeToggle ? edgeToggle.checked : true;
 
   mapCtrl = renderConceptMap(container, {
-    distance,
+    threshold,
     showEdges,
     onClickConcept: (conceptId) => {
       currentSelection = { type: "concept", id: conceptId };
@@ -60,11 +60,20 @@ function renderMap() {
 }
 
 function initMapControls() {
-  const distSlider = document.getElementById("mapDistanceSlider");
+  const threshSlider = document.getElementById("mapThresholdSlider");
+  const threshValue = document.getElementById("mapThresholdValue");
+  const strengthSlider = document.getElementById("mapStrengthSlider");
   const edgeToggle = document.getElementById("mapEdgeToggle");
 
-  distSlider?.addEventListener("input", () => {
-    if (mapCtrl) mapCtrl.setDistance(parseInt(distSlider.value));
+  threshSlider?.addEventListener("input", () => {
+    const val = parseInt(threshSlider.value);
+    if (threshValue) threshValue.textContent = val;
+    if (mapCtrl) mapCtrl.setThreshold(val);
+  });
+
+  strengthSlider?.addEventListener("input", () => {
+    const val = parseInt(strengthSlider.value);
+    if (mapCtrl) mapCtrl.setStrength(val / 5); // normalize 1-10 → 0.2-2.0
   });
 
   edgeToggle?.addEventListener("change", () => {

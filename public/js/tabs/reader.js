@@ -112,6 +112,8 @@ export async function onReaderActivated(params) {
       setTimeout(() => {
         scrollToExcerpt(document.getElementById("readerTextContent"), params.exc);
       }, 100);
+    } else if (params.pos != null) {
+      setTimeout(() => scrollToCharPos(parseInt(params.pos)), 100);
     }
     return;
   }
@@ -159,6 +161,8 @@ export async function onReaderActivated(params) {
     closeConceptDetail();
     if (params.exc) {
       setTimeout(() => scrollToExcerpt(document.getElementById("readerTextContent"), params.exc), 150);
+    } else if (params.pos != null) {
+      setTimeout(() => scrollToCharPos(parseInt(params.pos)), 200);
     }
   }
 }
@@ -320,6 +324,52 @@ function renderExcerptItem(exc, isLocal) {
 
 function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Scroll to a character position in the rendered text.
+ * Walks text nodes to find the right position, then scrolls.
+ */
+function scrollToCharPos(charPos) {
+  const container = document.getElementById("readerTextContent");
+  if (!container) return;
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let pos = 0;
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const len = node.textContent.length;
+
+    if (pos + len > charPos) {
+      // found the text node — create a temporary highlight
+      const offset = charPos - pos;
+      const range = document.createRange();
+      range.setStart(node, Math.min(offset, len));
+      range.setEnd(node, Math.min(offset + 20, len)); // highlight ~20 chars
+
+      // scroll into view
+      const rect = range.getBoundingClientRect();
+      const scrollParent = container.closest(".panel-content") || container.parentElement;
+      if (scrollParent && rect) {
+        const parentRect = scrollParent.getBoundingClientRect();
+        scrollParent.scrollTop += rect.top - parentRect.top - parentRect.height / 3;
+      }
+
+      // flash effect
+      const span = document.createElement("span");
+      span.className = "search-flash";
+      range.surroundContents(span);
+      setTimeout(() => {
+        const parent = span.parentNode;
+        parent.replaceChild(document.createTextNode(span.textContent), span);
+        parent.normalize();
+      }, 2000);
+
+      return;
+    }
+    pos += len;
+  }
 }
 
 function computeExcerptHash() {

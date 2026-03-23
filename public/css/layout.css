@@ -45,7 +45,11 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
+}
+
+.import-label {
+  cursor: pointer;
 }
 
 .status-msg {

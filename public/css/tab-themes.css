@@ -4,8 +4,22 @@
 .map-controls {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   margin-left: auto;
+}
+
+.control-label {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.control-value {
+  font-size: var(--font-size-sm);
+  color: var(--ink);
+  font-weight: 600;
+  min-width: 1em;
+  text-align: center;
 }
 
 .map-control {

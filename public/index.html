@@ -22,7 +22,12 @@
     <h1 class="logo">con<span class="section-sign">§</span>tel <span class="version">0.1.0</span></h1>
     <div class="header-actions">
       <span class="status-msg" id="statusMsg"></span>
-      <button class="btn-icon" id="themeToggle" title="Cambiar tema">◐</button>
+      <button class="btn-sm" id="exportBtn" title="Exportar constelación (ZIP)">Exportar</button>
+      <label class="btn-sm import-label" title="Importar constelación (ZIP)">
+        Importar
+        <input type="file" id="importFile" accept=".zip" hidden>
+      </label>
+      <button class="btn-icon" id="themeToggle" title="Cambiar tema"><img src="icons/icons_mode-switch.svg" alt="Cambiar tema" width="20" height="20" style="filter: var(--icon-filter)"></button>
     </div>
   </header>
 
@@ -51,7 +56,11 @@
             <h2>Corpus</h2>
             <span class="badge" id="sourcesCount">0</span>
           </div>
+          <div class="corpus-search">
+            <input type="text" id="corpusSearchInput" placeholder="Buscar en todos los textos..." />
+          </div>
           <div class="panel-content" id="sourcesListContent"></div>
+          <div class="search-results" id="corpusSearchResults" hidden></div>
         </div>
         <div class="split-handle" data-split="sources"></div>
         <div class="split-right" id="sourcePreview">
@@ -105,8 +114,14 @@
           <div class="panel-header">
             <h2>Mapa de conceptos</h2>
             <div class="map-controls">
-              <label class="map-control" title="Distancia entre nodos">
-                <input type="range" id="mapDistanceSlider" min="20" max="200" value="80" step="5">
+              <label class="map-control" title="Umbral: mostrar links con ≥ N secciones compartidas">
+                <span class="control-label">≥</span>
+                <input type="range" id="mapThresholdSlider" min="1" max="5" value="1" step="1">
+                <span class="control-value" id="mapThresholdValue">1</span>
+              </label>
+              <label class="map-control" title="Fuerza de atracción entre nodos conectados">
+                <span class="control-label">Fuerza</span>
+                <input type="range" id="mapStrengthSlider" min="1" max="10" value="5" step="1">
               </label>
               <label class="map-control" title="Mostrar aristas">
                 <input type="checkbox" id="mapEdgeToggle" checked>
@@ -141,8 +156,9 @@
     </div>
   </div>
 
-  <!-- D3.js via CDN (sin build step) -->
+  <!-- D3.js + JSZip via CDN (sin build step) -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
   <!-- Módulos JS -->
   <script type="module" src="js/main.js"></script>
 </body>
