@@ -1,8 +1,10 @@
 // main.js — punto de entrada de con§tel
 // Conecta state, router, tabs y componentes.
 
-import { loadState, subscribe, getStats } from "./state.js";
+import { state, loadState, subscribe, getStats } from "./state.js";
+import { api, isStaticMode } from "./api.js";
 import { initRouter, onTabChange } from "./router.js";
+import { getSourceText } from "./tabs/sources.js";
 import { initSplitViews } from "./components/split-view.js";
 import { initSourcesTab, onSourcesActivated } from "./tabs/sources.js";
 import { initReaderTab, onReaderActivated } from "./tabs/reader.js";
@@ -46,9 +48,16 @@ async function boot() {
 
   // status inicial
   const s = getStats();
-  showStatus(`${s.sources} fuentes · ${s.excerpts} § · ${s.concepts} conceptos`);
+  const suffix = isStaticMode() ? " (demo)" : "";
+  showStatus(`${s.sources} fuentes · ${s.excerpts} § · ${s.concepts} conceptos${suffix}`);
 
-  console.log("con§tel iniciado");
+  // en modo estático, indicar visualmente
+  if (isStaticMode()) {
+    document.getElementById("exportBtn")?.setAttribute("title", "Exportar constelación (ZIP) — incluye tus cambios locales");
+    document.querySelector(".import-label")?.setAttribute("title", "Importar constelación (ZIP) — reemplaza datos locales");
+  }
+
+  console.log(`con§tel iniciado${suffix}`);
 }
 
 // ── Theme toggle ────────────────────────────────────────────────────────────
@@ -80,7 +89,48 @@ function showStatus(msg) {
 
 // ── Export / Import ─────────────────────────────────────────────────────────
 
+function showImportConfirm() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal" style="max-width: 400px">
+        <h3 style="margin-bottom: var(--space-sm)">Importar constelación</h3>
+        <p style="font-size: var(--font-size-sm); color: var(--muted); margin-bottom: var(--space-md)">
+          Importar reemplazará todos los textos y datos actuales.
+        </p>
+        <div style="display: flex; gap: var(--space-sm); justify-content: flex-end; flex-wrap: wrap">
+          <button class="btn-sm" data-action="cancel">Cancelar</button>
+          <button class="btn-sm" data-action="backup-then-import" style="color: var(--accent)">Respaldar e importar</button>
+          <button class="btn-primary btn-sm" data-action="import">Importar directamente</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener("click", (e) => {
+      const action = e.target.dataset.action;
+      if (action) {
+        overlay.remove();
+        resolve(action);
+      } else if (e.target === overlay) {
+        overlay.remove();
+        resolve("cancel");
+      }
+    });
+  });
+}
+
 function initExportImport() {
+  // Dropdown toggle
+  const dropdown = document.getElementById("bibliotecaDropdown");
+  const menuBtn = document.getElementById("bibliotecaBtn");
+  menuBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle("open");
+  });
+  document.addEventListener("click", () => dropdown?.classList.remove("open"));
+
   const exportBtn = document.getElementById("exportBtn");
   const importInput = document.getElementById("importFile");
 
@@ -92,18 +142,15 @@ function initExportImport() {
 
       const zip = new JSZip();
 
-      // 1. DB
-      const dbRes = await fetch("/api/db");
-      const db = await dbRes.json();
-      zip.file("constel-db.json", JSON.stringify(db, null, 2));
+      // 1. DB — siempre desde el state en memoria (más reciente)
+      zip.file("constel-db.json", JSON.stringify(state, null, 2));
 
-      // 2. Corpus files
-      const corpusRes = await fetch("/api/corpus");
-      const { files } = await corpusRes.json();
-      for (const f of files) {
-        const textRes = await fetch(`/api/corpus/${encodeURIComponent(f.filename)}`);
-        const data = await textRes.json();
-        zip.file(`corpus/${f.filename}`, data.text || "");
+      // 2. Corpus — cargar cada texto
+      for (const src of Object.values(state.sources)) {
+        const text = await getSourceText(src.id);
+        if (text) {
+          zip.file(`corpus/${src.filename}`, text);
+        }
       }
 
       // 3. Generate and download
@@ -126,9 +173,16 @@ function initExportImport() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (!confirm("Importar reemplazará todos los textos y datos actuales. ¿Continuar?")) {
+    const action = await showImportConfirm();
+    if (action === "cancel") {
       importInput.value = "";
       return;
+    }
+    if (action === "backup-then-import") {
+      // exportar primero
+      exportBtn.click();
+      // esperar un momento para que el download arranque
+      await new Promise(r => setTimeout(r, 1000));
     }
 
     showStatus("Importando...");
@@ -147,27 +201,43 @@ function initExportImport() {
       }
 
       // 2. Extract corpus files
-      const corpusFiles = [];
+      const textFiles = [];
       zip.folder("corpus")?.forEach((relativePath, zipEntry) => {
         if (!zipEntry.dir) {
-          corpusFiles.push({ name: relativePath, entry: zipEntry });
+          textFiles.push({ name: relativePath, entry: zipEntry });
         }
       });
 
       const files = [];
-      for (const cf of corpusFiles) {
+      for (const cf of textFiles) {
         const content = await cf.entry.async("string");
         files.push({ filename: cf.name, content });
       }
 
-      // 3. Send to server
-      const res = await fetch("/api/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ db, files }),
-      });
+      // 3. Aplicar DB al state + localStorage
+      if (db) {
+        Object.assign(state, db);
+        try { localStorage.setItem("constel-state", JSON.stringify(state)); } catch {}
+      }
 
-      if (!res.ok) throw new Error("Server error");
+      // 4. Guardar textos en el text cache (para modo estático)
+      //    y en localStorage como respaldo
+      const textCacheData = {};
+      for (const f of files) {
+        textCacheData[f.filename] = f.content;
+      }
+      try { localStorage.setItem("constel-corpus", JSON.stringify(textCacheData)); } catch {}
+
+      // 5. Si hay servidor, también enviar allá
+      if (!isStaticMode()) {
+        try {
+          await fetch("/api/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ db, files }),
+          });
+        } catch {}
+      }
 
       importInput.value = "";
       showStatus("Importación completada — recargando...");

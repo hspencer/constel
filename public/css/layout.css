@@ -48,8 +48,45 @@ body {
   gap: var(--space-sm);
 }
 
-.import-label {
+/* ── Dropdown (Biblioteca) ─────────────────────────────────────────────── */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: var(--space-xs);
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 200;
+  padding: var(--space-xs) 0;
+}
+
+.dropdown.open .dropdown-menu {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  font-size: var(--font-size-sm);
+  color: var(--ink);
+  background: none;
+  border: none;
   cursor: pointer;
+  font-family: var(--font);
+}
+
+.dropdown-item:hover {
+  background: var(--surface-alt);
 }
 
 .status-msg {

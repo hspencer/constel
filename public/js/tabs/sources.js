@@ -189,13 +189,24 @@ export async function getSourceText(sourceId) {
   const src = state.sources[sourceId];
   if (!src) return null;
   if (textCache.has(src.filename)) return textCache.get(src.filename);
+
+  // intentar desde la API (servidor o fetch estático)
   try {
     const res = await api.readSource(src.filename);
     textCache.set(src.filename, res.text);
     return res.text;
-  } catch {
-    return null;
-  }
+  } catch {}
+
+  // fallback: corpus guardado en localStorage (desde import ZIP)
+  try {
+    const cached = JSON.parse(localStorage.getItem("constel-corpus") || "{}");
+    if (cached[src.filename]) {
+      textCache.set(src.filename, cached[src.filename]);
+      return cached[src.filename];
+    }
+  } catch {}
+
+  return null;
 }
 
 // ── Modal de edición de metadatos ────────────────────────────────────────────

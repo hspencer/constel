@@ -2,7 +2,7 @@
 
 Herramienta de análisis temático de corpus textuales. Sirve tanto para el estudio de textos filosóficos como para el análisis de entrevistas de investigación.
 
-![Pestaña Fuentes](docs/tab1.png)
+**[Demo en vivo →](https://herbertspencer.net/constel/)**
 
 ## Modelo conceptual
 
@@ -29,96 +29,69 @@ La relación central `excerpt ◂──▸ concept` es muchos-a-muchos. Los conc
 
 ### 1. Fuentes — el corpus
 
-Lista los textos del corpus con sus metadatos (autor, fecha, notas). A la izquierda, las tarjetas de cada fuente muestran cuántos excerpts (§) tiene y una barra de progreso de cobertura. A la derecha, una vista previa del texto seleccionado.
+Lista los textos del corpus con sus metadatos. Incluye un **buscador full-text** que busca dentro de todos los textos del corpus y navega al resultado.
 
 - **Importar**: click en una tarjeta carga el texto desde `corpus/`
-- **Editar metadatos**: botón ✎ abre un modal con título, autor, fecha, participante, rol, notas
-- **Frontmatter YAML** opcional en cada `.txt` para aportar metadatos automáticamente
+- **Editar metadatos**: botón abre un modal con título, autor, fecha, participante, rol, notas
+- **Frontmatter YAML** opcional en cada `.txt` para metadatos automáticos
 
 ### 2. Lector — codificación in vivo
 
-![Pestaña Lector](docs/tab2.png)
-
 Tres paneles: glosa cronológica | minimap | texto.
 
-**Glosa cronológica** (izquierda): lista vertical de todos los conceptos presentes en el texto, ordenados por primera aparición. Los conceptos que aparecen en múltiples pasajes son más prominentes (nivel 0 = más frecuente). El ancho del panel se ajusta con el resizer draggable.
+**Glosa cronológica** (izquierda): lista vertical de todos los conceptos presentes en el texto, ordenados por primera aparición. Los conceptos que aparecen en múltiples pasajes son más prominentes. El ancho se ajusta con el resizer draggable.
 
-**Minimap** (centro, 32px): barra vertical proporcional al largo del texto. Las bandas de color marcan la posición de cada excerpt. Click en cualquier punto del minimap salta al texto.
+**Minimap** (centro): barra vertical proporcional al largo del texto. Las bandas marcan la posición de cada excerpt.
 
 **Texto** (derecha): el texto completo con los excerpts subrayados. El flujo de trabajo:
 
 1. **Seleccionar** un pasaje con el mouse
-2. Aparece un **popup con input** y autocomplete fuzzy del vocabulario existente
+2. Aparece un **popup con input** y autocomplete del vocabulario existente
 3. **Escribir o elegir** un concepto → se crea el excerpt vinculado
-4. El excerpt queda subrayado; al pasar el mouse aparece un **tooltip** con el nombre del concepto y botones para eliminar
-5. Click en un concepto de la glosa abre el **panel de detalle** mostrando todas sus secciones separadas en "§ en este texto" y "en otros textos"
-6. Desde el detalle se puede **renombrar**, **eliminar** el concepto, o **agregar más secciones**
+4. Click en un concepto de la glosa abre el **panel de detalle** con todas sus secciones, separadas en "§ en este texto" y "en otros textos"
+5. Desde el detalle se puede **renombrar**, **eliminar** el concepto, o **agregar más secciones**
 
 ### 3. Mapa — síntesis temática
 
-![Pestaña Mapa](docs/tab3.png)
-
 Dos paneles: grafo de conceptos | gestión de temas.
 
-**Grafo force-directed** (izquierda): todos los conceptos del corpus como etiquetas de texto. Su tamaño tipográfico refleja la frecuencia (cantidad de excerpts × cantidad de fuentes donde aparece). Sin negrita, solo varía el tamaño (11px–31px).
+**Grafo force-directed**: todos los conceptos del corpus como etiquetas de texto. Su tamaño tipográfico refleja la frecuencia (cantidad de excerpts × cantidad de fuentes). Sin negrita, solo varía el tamaño (11px–31px).
 
-#### Cómo se calcula la topología del mapa
+#### Topología del mapa
 
-La proximidad entre conceptos emerge de los datos, no de una definición manual:
+Los conceptos se conectan por **co-excerpt**: dos conceptos se vinculan si y solo si el investigador los etiquetó en el mismo pasaje. Esto refleja decisiones explícitas del lector, no accidentes del texto.
 
-- **Enlace fuerte** (co-excerpt): dos concepts etiquetan el mismo excerpt → peso ×3
-- **Enlace débil** (co-source): dos concepts aparecen en el mismo texto → peso ×1
-- **Enlace por proximidad** (co-window): dos concepts aparecen cerca en el texto (ventana de 500 chars) → peso ×0.5
+El peso del link = cantidad de excerpts compartidos. Más co-ocurrencias → más cerca en el mapa.
 
-La **distancia** entre nodos es inversamente proporcional al peso del enlace. Los conceptos semánticamente afines (que tienden a co-ocurrir) se atraen. Los que nunca aparecen juntos quedan en la periferia.
-
-**Controles del mapa**:
-- **Slider de distancia**: regula la resorticidad general del grafo
-- **Toggle aristas**: mostrar/ocultar las líneas de conexión
+**Controles**:
+- **Umbral ≥ N**: filtra links por mínimo de secciones compartidas — permite podar y revelar la estructura fuerte
+- **Fuerza**: regula la atracción entre nodos conectados (suelto ↔ apretado)
+- **Toggle aristas**: mostrar/ocultar las líneas
 - **Zoom y paneo**: rueda del mouse + arrastrar
 
 **Panel de temas** (derecha): espacio de síntesis del investigador.
 
-- **Crear tema**: nombrar una agrupación → seleccionar conceptos para incluir
-- **Editar tema**: renombrar inline, toggle colapsable de conceptos contenidos
-- **Nota de desarrollo**: textarea libre para escribir la síntesis en markdown
-- **Secciones del tema**: lista de todos los excerpts agrupados, mostrando la cita completa, el concepto en negrita, y la fuente con flecha
+- **Crear tema**: nombrar una agrupación → seleccionar conceptos
+- **Editar tema**: renombrar inline, agregar/quitar conceptos
+- **Nota de desarrollo**: textarea libre para la síntesis
+- **Secciones del tema**: lista de todos los excerpts agrupados con la cita, el concepto y la fuente
 
-El flujo es: conceptos sin tema → seleccionar varios → agrupar bajo un nombre → escribir la nota de síntesis. Esto corresponde a las fases 2-4 del análisis temático (Braun & Clarke): de los códigos axiales a la síntesis interpretativa.
+## Arquitectura de persistencia
 
-## Filosofía: BBDD como texto
-
-Todo el estado vive en un único archivo JSON (`data/constel-db.json`). No hay base de datos relacional. El archivo es legible, versionable con git, y trivial de copiar. Los textos fuente viven como `.txt` en `corpus/` y no se duplican.
-
-Para crear una nueva instancia de análisis, basta copiar la carpeta:
+con§tel usa un modelo de **persistencia dual** que permite funcionar tanto como aplicación web estática (GitHub Pages) como con servidor local:
 
 ```
-~/Sites/constel-amereida/     ← instancia con textos filosóficos
-~/Sites/constel-entrevistas/  ← instancia con entrevistas del doctorado
+┌─────────────────┐         ┌──────────────────┐
+│   localStorage   │◀──────▸│   constel-db.json │
+│   (inmediato)    │  sync   │   (servidor)      │
+└─────────────────┘         └──────────────────┘
+        ▲                           ▲
+        │                           │
+   siempre escribe           solo si hay servidor
+   siempre lee primero       reconcilia por updatedAt
 ```
 
-## Stack técnico
-
-- Vanilla JavaScript (ES6 modules), HTML5, CSS3
-- Node.js con HTTP nativo (sin frameworks)
-- D3.js para el grafo de conceptos
-- Persistencia en JSON (`data/constel-db.json`)
-- Sin build step, sin dependencias npm en el cliente
-- Google Fonts: Gabarito (UI) + Sorts Mill Goudy (lectura)
-
-## Instalación y uso
-
-### Requisito previo: Node.js
-
-con§tel necesita [Node.js](https://nodejs.org/) (v18 o superior). Para verificar si ya lo tienes:
-
-```bash
-node --version
-```
-
-Si dice "command not found", descárgalo desde [nodejs.org](https://nodejs.org/) (versión LTS).
-
-### Puesta en marcha
+### Modo local (con servidor)
 
 ```bash
 git clone https://github.com/hspencer/constel.git
@@ -126,31 +99,43 @@ cd constel
 node server.mjs
 ```
 
-Abre [http://127.0.0.1:8787](http://127.0.0.1:8787) en el navegador.
+Abre [http://127.0.0.1:8787](http://127.0.0.1:8787). Todos los cambios se guardan en `localStorage` inmediatamente y se sincronizan al archivo `constel-db.json` en disco (debounced 300ms). Al cargar, el sistema reconcilia: gana el más reciente entre localStorage y disco.
 
-### Iniciar un proyecto propio
+### Modo demo (GitHub Pages, sin servidor)
 
-El repositorio incluye textos de ejemplo (corpus de Amereida). Para empezar con tus propios textos:
+La app detecta automáticamente la ausencia de servidor. Los textos se cargan desde los archivos estáticos del repositorio. Los cambios del usuario se guardan en `localStorage` — persisten entre sesiones del mismo browser.
 
-```bash
-npm run init
-```
+Para **compartir tu trabajo** o **llevártelo**: usa **Exportar** (descarga un ZIP con todos los textos + la base de datos con tus anotaciones). Cualquiera puede **Importar** ese ZIP en su instancia.
 
-Esto limpia los textos de ejemplo y resetea la base de datos (con confirmación). Después, coloca tus textos en `corpus/` y ejecuta `npm start`.
+### Filosofía: BBDD como texto
 
-### Estructura de carpetas
+Todo el estado vive en un único archivo JSON legible, versionable con git, trivial de copiar. Los textos fuente viven como `.txt` en `corpus/` y no se duplican. No hay base de datos relacional, no hay migraciones, no hay build step.
+
+## Stack técnico
+
+- Vanilla JavaScript (ES6 modules), HTML5, CSS3
+- Node.js con HTTP nativo (sin frameworks, sin npm dependencies)
+- D3.js para el grafo de conceptos
+- JSZip para export/import
+- Google Fonts: Gabarito (UI) + Sorts Mill Goudy (lectura)
+- Persistencia: localStorage + JSON file
+
+## Estructura de carpetas
 
 ```
 constel/
-├── corpus/          ← tus textos van aquí (.txt o .md)
+├── corpus/              ← textos van aquí (.txt o .md)
 ├── data/
-│   └── constel-db.json   ← la base de datos (se genera sola)
-├── public/          ← la aplicación web
-├── scripts/         ← herramientas de automatización
-└── server.mjs       ← el servidor
+│   └── constel-db.json  ← la base de datos
+├── public/              ← la aplicación web
+│   ├── css/             ← estilos por componente
+│   ├── js/              ← módulos ES6
+│   └── icons/           ← íconos SVG
+├── scripts/             ← herramientas de automatización
+└── server.mjs           ← servidor Node.js
 ```
 
-### Metadatos con frontmatter (opcional)
+## Metadatos con frontmatter (opcional)
 
 ```markdown
 ---
@@ -164,20 +149,6 @@ notes: Segunda sesión, contexto laboral
 
 El texto del documento comienza aquí...
 ```
-
-## Anotación asistida por IA
-
-El script `scripts/auto-annotate.mjs` automatiza la marcación de excerpts y conceptos usando Claude Code CLI. El proceso es interactivo: la IA propone, el investigador ajusta.
-
-```bash
-# Vista previa sin modificar la base de datos
-node scripts/auto-annotate.mjs "mi-texto.txt" --dry-run
-
-# Ejecución real
-node scripts/auto-annotate.mjs "mi-texto.txt"
-```
-
-El script analiza el texto, propone conceptos existentes y nuevos, permite eliminar o agregar desde el prompt, y genera excerpts con offsets verificados sobre el texto original.
 
 ## Origen
 
