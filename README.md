@@ -29,6 +29,8 @@ La relación central `excerpt ◂──▸ concept` es muchos-a-muchos. Los conc
 
 ### 1. Fuentes — el corpus
 
+![Pestaña Fuentes](docs/tab1.png)
+
 Lista los textos del corpus con sus metadatos. Incluye un **buscador full-text** que busca dentro de todos los textos del corpus y navega al resultado.
 
 - **Importar**: click en una tarjeta carga el texto desde `corpus/`
@@ -36,6 +38,8 @@ Lista los textos del corpus con sus metadatos. Incluye un **buscador full-text**
 - **Frontmatter YAML** opcional en cada `.txt` para metadatos automáticos
 
 ### 2. Lector — codificación in vivo
+
+![Pestaña Lector](docs/tab2.png)
 
 Tres paneles: glosa cronológica | minimap | texto.
 
@@ -52,6 +56,8 @@ Tres paneles: glosa cronológica | minimap | texto.
 5. Desde el detalle se puede **renombrar**, **eliminar** el concepto, o **agregar más secciones**
 
 ### 3. Mapa — síntesis temática
+
+![Pestaña Mapa](docs/tab3.png)
 
 Dos paneles: grafo de conceptos | gestión de temas.
 
