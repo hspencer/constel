@@ -69,9 +69,10 @@
 
 /* Vista previa */
 #sourcePreviewContent {
-  font-family: var(--mono);
-  font-size: var(--font-size-sm);
-  line-height: 1.7;
+  font-family: var(--font-reading);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  max-width: 72ch;
   white-space: pre-wrap;
   word-wrap: break-word;
 }

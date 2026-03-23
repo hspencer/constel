@@ -87,7 +87,7 @@ function renderSourceCard(src) {
     <div class="card source-card" data-filename="${src.filename}" data-source-id="${src.id || ""}">
       <div class="source-card-header">
         <h3>${escapeHtml(src.title || src.filename)}</h3>
-        ${src.imported ? `<button class="btn-icon source-edit-btn" title="Editar metadatos">✎</button>` : ""}
+        <button class="btn-icon source-edit-btn" title="Editar metadatos"><img src="icons/icons_edit.svg" class="btn-svg-icon" alt="" /></button>
       </div>
       ${metaLine ? `<div class="source-author">${escapeHtml(metaLine)}</div>` : ""}
       <div class="source-meta">
@@ -242,10 +242,7 @@ function showEditModal(sourceId) {
           <textarea name="notes" rows="2" placeholder="Notas sobre esta fuente...">${escapeHtml(src.notes || "")}</textarea>
         </label>
         <hr />
-        <label>
-          <span>Archivo</span>
-          <input type="text" name="filename" value="${escapeAttr(src.filename)}" />
-        </label>
+        <div class="modal-filename">${escapeHtml(src.filename)}</div>
         <div class="modal-actions">
           <button type="button" class="btn-sm btn-danger" id="sourceDeleteBtn">Eliminar fuente</button>
           <div class="modal-actions-right">
@@ -283,18 +280,6 @@ function showEditModal(sourceId) {
   document.getElementById("sourceEditForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
-    const newFilename = form.get("filename").trim();
-
-    // renombrar archivo si cambió
-    if (newFilename && newFilename !== src.filename) {
-      try {
-        await api.renameSource(src.filename, newFilename);
-        textCache.delete(src.filename);
-      } catch (err) {
-        alert(`Error renombrando: ${err.message}`);
-        return;
-      }
-    }
 
     updateSource(sourceId, {
       title: form.get("title").trim() || src.title,
@@ -303,7 +288,6 @@ function showEditModal(sourceId) {
       participant: form.get("participant").trim(),
       role: form.get("role").trim(),
       notes: form.get("notes").trim(),
-      filename: newFilename || src.filename,
     });
 
     modal.remove();

@@ -4,8 +4,23 @@
   "type": "module",
   "description": "con§tel — herramienta de análisis temático de corpus textuales",
   "scripts": {
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "init": "node scripts/init.mjs"
   },
+  "keywords": [
+    "thematic-analysis",
+    "qualitative-research",
+    "corpus",
+    "annotation",
+    "concept-mapping"
+  ],
   "author": "Herbert Spencer",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hspencer/constel.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

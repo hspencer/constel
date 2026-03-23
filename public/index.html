@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>con§tel</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700&family=Sorts+Mill+Goudy:ital@0;1&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/reset.css">
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/layout.css">
@@ -16,7 +19,7 @@
 <body>
   <!-- Shell principal -->
   <header class="shell-header">
-    <h1 class="logo">con<span class="section-sign">§</span>tel</h1>
+    <h1 class="logo">con<span class="section-sign">§</span>tel <span class="version">0.1.0</span></h1>
     <div class="header-actions">
       <span class="status-msg" id="statusMsg"></span>
       <button class="btn-icon" id="themeToggle" title="Cambiar tema">◐</button>
@@ -26,16 +29,15 @@
   <!-- Barra de pestañas -->
   <nav class="tabs-bar" role="tablist">
     <button class="tab-btn active" data-tab="sources" role="tab" aria-selected="true">
-      Fuentes
+      <img src="icons/icons_library.svg" class="tab-icon" alt="" /> Fuentes
     </button>
     <button class="tab-btn" data-tab="reader" role="tab" aria-selected="false">
-      Lector
+      <img src="icons/icons_section.svg" class="tab-icon" alt="" /> Lector
     </button>
     <button class="tab-btn" data-tab="themes" role="tab" aria-selected="false">
-      Mapa
+      <img src="icons/icons_map.svg" class="tab-icon" alt="" /> Mapa
     </button>
     <span class="tab-source-title" id="tabSourceTitle">
-      <button class="tab-back-btn" id="backToSources" title="Volver a Fuentes">←</button>
       <span id="readerTitle"></span>
     </span>
   </nav>
@@ -102,6 +104,15 @@
         <div class="split-left" id="conceptMap">
           <div class="panel-header">
             <h2>Mapa de conceptos</h2>
+            <div class="map-controls">
+              <label class="map-control" title="Distancia entre nodos">
+                <input type="range" id="mapDistanceSlider" min="20" max="200" value="80" step="5">
+              </label>
+              <label class="map-control" title="Mostrar aristas">
+                <input type="checkbox" id="mapEdgeToggle" checked>
+                <span class="toggle-label">Aristas</span>
+              </label>
+            </div>
           </div>
           <div class="panel-content map-content" id="mapContainer"></div>
         </div>

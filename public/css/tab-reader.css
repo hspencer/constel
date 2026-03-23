@@ -381,8 +381,8 @@
 }
 
 .reader-content {
-  font-family: var(--font);
-  font-size: var(--font-size-base);
+  font-family: var(--font-reading);
+  font-size: 1.125rem;
   line-height: 1.8;
   padding: var(--space-lg) var(--space-xl);
   max-width: 72ch;
@@ -474,6 +474,18 @@
 .tooltip-btn:hover {
   opacity: 1;
   background: rgba(255,255,255,0.15);
+}
+
+.tooltip-btn.tooltip-delete {
+  color: var(--danger, #c44);
+  opacity: 0.8;
+  font-weight: 600;
+}
+
+.tooltip-btn.tooltip-delete:hover {
+  opacity: 1;
+  background: var(--danger, #c44);
+  color: white;
 }
 
 /* ── Modo "agregar sección" ──────────────────────────────────────────── */

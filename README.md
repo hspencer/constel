@@ -36,22 +36,109 @@ La relación central: `excerpt ◂──▸ concept` es muchos-a-muchos. Los con
 - Persistencia en JSON (`data/constel-db.json`)
 - Sin build step, sin dependencias npm en el cliente
 
-## Uso
+## Instalación y uso
+
+### Requisito previo: Node.js
+
+con§tel necesita [Node.js](https://nodejs.org/) (v18 o superior) para funcionar. Node.js es un programa que permite ejecutar JavaScript fuera del navegador — en este caso, actúa como el servidor local que sirve la aplicación.
+
+**Para verificar si ya lo tienes instalado**, abre la Terminal (macOS) o PowerShell (Windows) y escribe:
 
 ```bash
-# clonar
-git clone https://github.com/hspencer/constel.git
-cd constel
-
-# colocar textos en la carpeta corpus/
-cp mis-textos/*.txt corpus/
-
-# iniciar servidor
-node server.mjs
-
-# abrir en el navegador
-open http://127.0.0.1:8787
+node --version
 ```
+
+Si aparece algo como `v18.x.x` o superior, ya está listo. Si dice "command not found", descárgalo desde [nodejs.org](https://nodejs.org/) (elige la versión LTS) e instálalo como cualquier aplicación.
+
+### Puesta en marcha
+
+1. **Descarga el proyecto.** Puedes [descargar el ZIP](https://github.com/hspencer/constel/archive/refs/heads/main.zip) y descomprimirlo, o si usas git:
+
+    ```bash
+    git clone https://github.com/hspencer/constel.git
+    ```
+
+2. **Coloca tus textos** en la carpeta `corpus/` dentro del proyecto. Pueden ser archivos `.txt` o `.md`. El proyecto incluye textos de ejemplo que puedes reemplazar o complementar.
+
+3. **Abre la Terminal** y navega hasta la carpeta del proyecto:
+
+    ```bash
+    cd ruta/a/constel
+    ```
+
+    En macOS puedes arrastrar la carpeta a la Terminal para obtener la ruta automáticamente.
+
+4. **Inicia el servidor:**
+
+    ```bash
+    node server.mjs
+    ```
+
+    Verás un mensaje como:
+
+    ```text
+      con§tel — http://127.0.0.1:8787
+    ```
+
+5. **Abre el navegador** (Chrome, Firefox, Safari) y ve a la dirección que aparece:
+
+    [http://127.0.0.1:8787](http://127.0.0.1:8787)
+
+6. **Para detener el servidor**, vuelve a la Terminal y presiona `Ctrl + C`.
+
+### Iniciar un proyecto propio
+
+El repositorio incluye textos de ejemplo (corpus de Amereida) para que puedas explorar la interfaz. Cuando quieras empezar tu propio análisis con tus propios textos, ejecuta:
+
+```bash
+npm run init
+```
+
+Esto borra los textos de ejemplo y resetea la base de datos. El script te muestra qué se va a eliminar y pide confirmación antes de proceder:
+
+```text
+  con§tel — inicializar proyecto nuevo
+
+  Se eliminará:
+    9 textos en corpus/
+    Base de datos (9 fuentes, 176 excerpts, 57 conceptos)
+    3 snapshots en data/versions/
+
+  ¿Continuar? (s/n)
+```
+
+Después de inicializar, solo coloca tus textos (`.txt` o `.md`) en la carpeta `corpus/` y ejecuta `npm start`.
+
+### Estructura de carpetas
+
+```text
+constel/
+├── corpus/          ← tus textos van aquí (.txt o .md)
+├── data/
+│   └── constel-db.json   ← la base de datos (se genera sola)
+├── public/          ← la aplicación web (no tocar)
+├── scripts/         ← herramientas de automatización
+└── server.mjs       ← el servidor
+```
+
+### Metadatos con frontmatter (opcional)
+
+Los archivos de texto pueden incluir un encabezado YAML para aportar metadatos. Esto es especialmente útil para entrevistas anonimizadas:
+
+```markdown
+---
+title: Entrevista participante P-07
+author: Equipo de investigación
+date: 2026-03-15
+participant: P-07
+role: diseñador senior
+notes: Segunda sesión, contexto laboral
+---
+
+El texto del documento comienza aquí...
+```
+
+Los campos del frontmatter se importan automáticamente al agregar el texto en la pestaña Fuentes. También pueden editarse después desde el botón de edición (✎) en cada tarjeta.
 
 ## Flujo de trabajo
 
@@ -189,11 +276,12 @@ Claude recorre el texto con la lista curada y genera excerpts con:
 
 ### Notas
 
-- El script **siempre crea un backup** antes de modificar `constel-db.json` (en `data/constel-db.backup-*.json`)
+- El script **requiere que el servidor esté corriendo** (`node server.mjs`) — guarda los cambios via API, lo que evita conflictos con el navegador abierto
 - Los conceptos que ya existen en la DB se reutilizan por label (sin duplicados)
-- Usa `--dry-run` para inspeccionar los resultados sin escribir a disco
-- Si un excerpt no se encuentra exactamente en el texto original, se omite (sin datos corruptos)
-- El script detecta y evita solapamientos con excerpts ya existentes en el documento
+- Usa `--dry-run` para inspeccionar los resultados sin escribir nada
+- Si un excerpt no se localiza exactamente en el texto original, se omite (sin datos corruptos)
+- Los conceptos se procesan en tandas de 3 para evitar respuestas truncadas
+- Después de ejecutar el script, **recarga la página** del navegador para ver los cambios
 
 ## Origen
 

@@ -33,6 +33,15 @@ body {
   font-weight: 700;
 }
 
+.version {
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: var(--muted);
+  vertical-align: super;
+  margin-left: 2px;
+  letter-spacing: 0;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -76,40 +85,45 @@ body {
   border-bottom-color: var(--accent);
 }
 
-/* ── Título del texto activo (en la tab bar) ─────────────────────────── */
+/* ── Tab icons ─────────────────────────────────────────────────────────── */
+.tab-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: -2px;
+  opacity: 0.5;
+  filter: var(--icon-filter, none);
+}
+
+.tab-btn.active .tab-icon {
+  opacity: 1;
+}
+
+/* ── Título del texto activo en la tab bar ────────────────────────────── */
 .tab-source-title {
   display: none;
   align-items: center;
-  gap: var(--space-xs);
-  margin-left: auto;
-  padding: 0 var(--space-lg);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  margin-left: var(--space-md);
   color: var(--accent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 50vw;
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-family: var(--font-reading);
+  line-height: 1;
 }
 
 .tab-source-title.visible {
   display: flex;
 }
 
-.tab-back-btn {
-  background: none;
-  border: none;
-  color: var(--accent);
-  cursor: pointer;
-  font-size: var(--font-size-base);
-  padding: 2px 6px;
-  border-radius: var(--radius);
-  transition: background var(--duration) var(--ease);
-  flex-shrink: 0;
-}
-
-.tab-back-btn:hover {
-  background: var(--surface-alt);
+/* ── SVG icon inside buttons ─────────────────────────────────────────── */
+.btn-svg-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  filter: var(--icon-filter, none);
 }
 
 /* ── Tab panels ────────────────────────────────────────────────────────── */

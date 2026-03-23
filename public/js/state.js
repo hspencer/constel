@@ -301,15 +301,24 @@ export function getNotesForTheme(themeId) {
 // ── Queries de grafo ────────────────────────────────────────────────────────
 
 /**
- * Calcula los enlaces entre concepts para el mapa.
- * Retorna { nodes, links } donde:
- *   - nodes = [{ id, label, themeId, excerptCount }]
- *   - links = [{ source, target, weight, shared }]
+ * Computa el grafo de conceptos con topología semántica.
+ *
+ * Dos niveles de proximidad:
+ *   1. Co-excerpt (fuerte): dos conceptos etiquetan el MISMO pasaje.
+ *      El investigador los vinculó explícitamente.
+ *   2. Proximidad textual (medio): sus excerpts están CERCA en el texto
+ *      (< PROXIMITY_CHARS). El autor del texto los puso cerca.
+ *
+ * NO se usa co-source (estar en el mismo texto) porque genera 86%
+ * de links sin significado semántico (ruido).
+ *
+ * @param {string|null} sourceId - filtrar a un source, o null para global
+ * @returns {{ nodes, links }}
  */
-/**
- * Computa el grafo de conceptos filtrado a un source específico.
- * Si no se pasa sourceId, retorna el grafo global.
- */
+const PROXIMITY_CHARS = 800; // umbral de cercanía textual
+const W_COEXCERPT = 5;      // peso por cada co-ocurrencia en excerpt
+const W_PROXIMITY_MAX = 3;   // peso máximo por proximidad (decae con distancia)
+
 export function computeConceptGraph(sourceId = null) {
   const excerpts = sourceId
     ? Object.values(state.excerpts).filter(e => e.sourceId === sourceId)
@@ -322,7 +331,7 @@ export function computeConceptGraph(sourceId = null) {
   }
   const concepts = [...conceptIds].map(id => state.concepts[id]).filter(Boolean);
 
-  // nodos — usar TODOS los excerpts para conteo global de sources
+  // nodos — conteo global
   const allExcerpts = Object.values(state.excerpts);
   const nodes = concepts.map(c => {
     const relevantExc = allExcerpts.filter(e => e.conceptIds.includes(c.id));
@@ -336,8 +345,8 @@ export function computeConceptGraph(sourceId = null) {
     };
   });
 
-  // construir mapa de co-ocurrencia
-  const linkMap = new Map(); // "conA::conB" → { excerptShared, sourceShared }
+  // ── Link map ──
+  const linkMap = new Map();
 
   function linkKey(a, b) {
     return a < b ? `${a}::${b}` : `${b}::${a}`;
@@ -345,51 +354,63 @@ export function computeConceptGraph(sourceId = null) {
 
   function getOrCreate(a, b) {
     const k = linkKey(a, b);
-    if (!linkMap.has(k)) linkMap.set(k, { source: a, target: b, excerptShared: 0, sourceShared: new Set() });
+    if (!linkMap.has(k)) linkMap.set(k, { source: a, target: b, coExcerpt: 0, proximity: 0 });
     return linkMap.get(k);
   }
 
+  // ── Nivel 1: co-excerpt (comparten el mismo pasaje) ──
   for (const exc of excerpts) {
     const cids = exc.conceptIds;
-    // co-ocurrencia en excerpt (enlace fuerte)
     for (let i = 0; i < cids.length; i++) {
       for (let j = i + 1; j < cids.length; j++) {
-        getOrCreate(cids[i], cids[j]).excerptShared++;
+        getOrCreate(cids[i], cids[j]).coExcerpt++;
       }
     }
   }
 
-  // co-ocurrencia en source (enlace débil)
-  const sourceConceptMap = new Map(); // sourceId → Set<conceptId>
+  // ── Nivel 2: proximidad textual (excerpts cercanos en el texto) ──
+  // Agrupar excerpts por source y ordenar por posición
+  const bySource = new Map();
   for (const exc of excerpts) {
-    if (!sourceConceptMap.has(exc.sourceId)) sourceConceptMap.set(exc.sourceId, new Set());
-    for (const cid of exc.conceptIds) {
-      sourceConceptMap.get(exc.sourceId).add(cid);
-    }
+    if (!bySource.has(exc.sourceId)) bySource.set(exc.sourceId, []);
+    bySource.get(exc.sourceId).push(exc);
   }
 
-  for (const conceptSet of sourceConceptMap.values()) {
-    const arr = [...conceptSet];
-    for (let i = 0; i < arr.length; i++) {
-      for (let j = i + 1; j < arr.length; j++) {
-        const link = getOrCreate(arr[i], arr[j]);
-        link.sourceShared.add("src"); // solo marcar que comparten source
+  for (const [, srcExcerpts] of bySource) {
+    const sorted = srcExcerpts.sort((a, b) => a.start - b.start);
+
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const gap = sorted[j].start - sorted[i].end;
+        if (gap > PROXIMITY_CHARS) break; // ya muy lejos, salir del inner loop
+        if (gap < 0) continue; // se solapan, ya cubierto por co-excerpt si comparten conceptos
+
+        // peso inversamente proporcional a la distancia
+        const proximityScore = 1 - (gap / PROXIMITY_CHARS);
+
+        // crear links entre todos los conceptos de exc[i] y exc[j]
+        for (const cA of sorted[i].conceptIds) {
+          for (const cB of sorted[j].conceptIds) {
+            if (cA === cB) continue; // mismo concepto, no linkear consigo mismo
+            const link = getOrCreate(cA, cB);
+            link.proximity = Math.max(link.proximity, proximityScore);
+          }
+        }
       }
     }
   }
 
-  // pesos: excerpt compartido = 3, source compartido = 1
-  const W_STRONG = 3;
-  const W_WEAK = 1;
+  // ── Calcular pesos finales ──
   const links = [];
   for (const link of linkMap.values()) {
-    const weight = link.excerptShared * W_STRONG + link.sourceShared.size * W_WEAK;
-    if (weight > 0) {
+    const weight = link.coExcerpt * W_COEXCERPT + link.proximity * W_PROXIMITY_MAX;
+    if (weight > 0.5) { // filtrar links muy débiles
       links.push({
         source: link.source,
         target: link.target,
         weight,
-        shared: link.excerptShared,
+        coExcerpt: link.coExcerpt,
+        proximity: link.proximity,
       });
     }
   }

@@ -12,14 +12,24 @@ import { navigateTo } from "../router.js";
 import { renderConceptMap } from "../components/concept-map.js";
 
 let currentSelection = null; // { type: "concept"|"theme", id: string }
-let simulation = null;
+let mapCtrl = null;
 
 export function initThemesTab() {
   subscribe(() => {
-    if (document.getElementById("panel-themes")?.classList.contains("active")) {
-      renderThemeDetail();
+    const panel = document.getElementById("panel-themes");
+    if (!panel?.classList.contains("active")) return;
+
+    // NEVER re-render if user is editing anywhere in this panel
+    const active = document.activeElement;
+    if (active && panel.contains(active) &&
+        (active.tagName === "TEXTAREA" || active.tagName === "INPUT")) {
+      return;
     }
+
+    renderThemeDetail();
   });
+
+  initMapControls();
 }
 
 export function onThemesActivated() {
@@ -31,15 +41,35 @@ function renderMap() {
   const container = document.getElementById("mapContainer");
   if (!container) return;
 
-  if (simulation) { simulation.stop(); simulation = null; }
+  if (mapCtrl) { mapCtrl.simulation.stop(); mapCtrl = null; }
 
-  const ctrl = renderConceptMap(container, {
+  // read current control values
+  const distSlider = document.getElementById("mapDistanceSlider");
+  const edgeToggle = document.getElementById("mapEdgeToggle");
+  const distance = distSlider ? parseInt(distSlider.value) : 80;
+  const showEdges = edgeToggle ? edgeToggle.checked : true;
+
+  mapCtrl = renderConceptMap(container, {
+    distance,
+    showEdges,
     onClickConcept: (conceptId) => {
       currentSelection = { type: "concept", id: conceptId };
       renderThemeDetail();
     },
   });
-  if (ctrl) simulation = ctrl.simulation;
+}
+
+function initMapControls() {
+  const distSlider = document.getElementById("mapDistanceSlider");
+  const edgeToggle = document.getElementById("mapEdgeToggle");
+
+  distSlider?.addEventListener("input", () => {
+    if (mapCtrl) mapCtrl.setDistance(parseInt(distSlider.value));
+  });
+
+  edgeToggle?.addEventListener("change", () => {
+    if (mapCtrl) mapCtrl.setEdgesVisible(edgeToggle.checked);
+  });
 }
 
 function renderThemeDetail() {
@@ -73,7 +103,7 @@ function renderThemeOverview(container, titleEl) {
           <span class="theme-color-dot" style="background: ${theme.color}"></span>
           <h3 class="theme-label" data-theme="${theme.id}">${escapeHtml(theme.label)}</h3>
           <span class="badge">${concepts.length}</span>
-          <button class="btn-sm" data-select-theme="${theme.id}">→</button>
+          <button class="btn-sm btn-icon-only" data-select-theme="${theme.id}"><img class="chevron-icon" src="icons/icons_chevron-right.svg" alt="ver" /></button>
         </div>
         <div class="theme-concepts">
           ${concepts.map(c => `
@@ -91,7 +121,7 @@ function renderThemeOverview(container, titleEl) {
     html += `
       <div class="ungrouped-section">
         <div class="theme-section-header">
-          <h3>Sin agrupar</h3>
+          <h3>Sin tema definido</h3>
           <span class="badge">${ungrouped.length}</span>
         </div>
         <div class="theme-concepts">
@@ -158,7 +188,7 @@ function renderConceptDetail(container, titleEl, conceptId) {
     <div style="margin-bottom: var(--space-md)">
       <label style="font-size: var(--font-size-sm); color: var(--muted)">Tema:</label>
       <select id="conceptThemeSelect" style="margin-left: var(--space-sm); padding: var(--space-xs)">
-        <option value="">Sin agrupar</option>
+        <option value="">Sin tema definido</option>
         ${themes.map(t => `
           <option value="${t.id}" ${concept.themeId === t.id ? "selected" : ""}>
             ${escapeHtml(t.label)}
@@ -225,15 +255,17 @@ function renderThemeNotes(container, titleEl, themeId) {
         <span class="theme-color-dot" style="background: ${theme.color}"></span>
         <input class="theme-title-input" id="themeTitleInput" type="text" value="${escapeHtml(theme.label)}" spellcheck="false" />
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-md)">
-        <span class="badge">${concepts.length} conceptos · ${excerpts.length} §</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-sm)">
+        <button class="btn-toggle-concepts" id="toggleConceptsBtn">
+          <img class="chevron-icon" id="conceptsChevron" src="icons/icons_chevron-right.svg" alt="" />
+          ${concepts.length} conceptos · ${excerpts.length} §
+        </button>
         <button class="btn-sm btn-danger" id="deleteThemeBtn">Eliminar tema</button>
       </div>
     </div>
 
-    <div class="theme-concepts-section" style="margin-bottom: var(--space-md)">
-      <label style="font-size: var(--font-size-sm); color: var(--muted); display: block; margin-bottom: var(--space-xs)">Conceptos contenidos:</label>
-      <div class="theme-concepts">
+    <div class="theme-concepts-section" id="conceptsCollapsible" hidden>
+      <div class="theme-concepts" style="margin-bottom: var(--space-xs)">
         ${concepts.map(c => `
           <span class="concept-tag removable" style="border-color: ${theme.color}; background: ${theme.color}20"
                 data-concept-id="${c.id}" data-select-concept="${c.id}">
@@ -243,8 +275,8 @@ function renderThemeNotes(container, titleEl, themeId) {
         `).join("")}
       </div>
       ${ungrouped.length ? `
-        <div class="add-concepts-to-theme" style="margin-top: var(--space-sm)">
-          <label style="font-size: var(--font-size-sm); color: var(--muted); display: block; margin-bottom: var(--space-xs)">Agregar conceptos:</label>
+        <div class="add-concepts-to-theme">
+          <label style="font-size: var(--font-size-sm); color: var(--muted); display: block; margin-bottom: var(--space-xs)">Agregar:</label>
           <div class="theme-concepts ungrouped-picker">
             ${ungrouped.map(c => `
               <span class="concept-tag addable" style="border-color: var(--muted)"
@@ -258,31 +290,53 @@ function renderThemeNotes(container, titleEl, themeId) {
     </div>
 
     <div class="note-editor">
-      <label>Notas {n} — texto emergente</label>
+      <label>Desarrollo de ${escapeHtml(theme.label)}</label>
       <textarea id="themeNoteText" placeholder="Escribe aquí tu síntesis, implicancias, argumentos...">${escapeHtml(notes[0]?.text || "")}</textarea>
     </div>
 
-    <details style="margin-top: var(--space-md)">
-      <summary style="cursor: pointer; color: var(--muted); font-size: var(--font-size-sm)">
-        ${excerpts.length} excerpts de este tema
-      </summary>
-      <div class="excerpt-list" style="margin-top: var(--space-sm)">
+    ${excerpts.length ? `
+    <div class="theme-excerpts-section">
+      <label style="font-size: var(--font-size-sm); color: var(--muted); display: block; margin-bottom: var(--space-xs)">
+        ${excerpts.length} secciones de este tema:
+      </label>
+      <div class="excerpt-list">
         ${excerpts.map(exc => {
           const src = state.sources[exc.sourceId];
+          const conceptLabels = exc.conceptIds
+            .map(cid => state.concepts[cid])
+            .filter(c => c && concepts.some(tc => tc.id === c.id))
+            .map(c => c.label);
+          const conceptStr = conceptLabels.length ? conceptLabels.join(", ") : "";
+          const srcLabel = src?.title || src?.filename || "?";
           return `
             <div class="excerpt-item" data-source="${exc.sourceId}" data-excerpt="${exc.id}">
-              ${escapeHtml(exc.text.slice(0, 200))}${exc.text.length > 200 ? "..." : ""}
-              <div class="excerpt-source">${escapeHtml(src?.title || "?")}</div>
+              <div class="excerpt-quote">${escapeHtml(exc.text)}</div>
+              <div class="excerpt-meta">
+                ${conceptStr ? `<strong>${escapeHtml(conceptStr)}</strong>` : ""}
+                <span class="excerpt-meta-arrow">→</span>
+                <span class="excerpt-meta-source">${escapeHtml(srcLabel)}</span>
+              </div>
             </div>
           `;
         }).join("")}
       </div>
-    </details>
+    </div>
+    ` : ""}
 
     <button class="btn-sm" style="margin-top: var(--space-md)" id="backToOverview">← Todos los temas</button>
   `;
 
   container.innerHTML = html;
+
+  // toggle conceptos
+  const toggleBtn = container.querySelector("#toggleConceptsBtn");
+  const collapsible = container.querySelector("#conceptsCollapsible");
+  const chevron = container.querySelector("#conceptsChevron");
+  toggleBtn?.addEventListener("click", () => {
+    const open = collapsible.hidden;
+    collapsible.hidden = !open;
+    chevron.src = open ? "icons/icons_chevron-down.svg" : "icons/icons_chevron-right.svg";
+  });
 
   // rename tema
   const titleInput = container.querySelector("#themeTitleInput");

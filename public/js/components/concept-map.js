@@ -1,17 +1,17 @@
 // concept-map.js — grafo force-directed D3.js de conceptos
-// Modo título: los labels son las partículas, sin círculos.
-// Tamaño tipográfico = f(excerptCount, sourceCount).
-// forceCollide con bounding box del texto → sin traslape.
+// Modo título: labels como partículas, tamaño = f(frecuencia).
+// Sin negrita. forceCollide con bounding box → sin traslape.
 
 import { state, computeConceptGraph, getThemeColor } from "../state.js";
 
 /**
- * Renderiza el mapa de conceptos en modo título.
  * @param {HTMLElement} container
  * @param {Object} opts
- * @param {string} [opts.sourceId] - filtrar a un source
- * @param {Function} opts.onClickConcept - (conceptId) => void
- * @returns {{ simulation, highlightNode(id), clearHighlight() } | null}
+ * @param {string} [opts.sourceId]
+ * @param {number} [opts.distance=80]
+ * @param {boolean} [opts.showEdges=true]
+ * @param {Function} opts.onClickConcept
+ * @returns {Object|null} controller
  */
 export function renderConceptMap(container, opts = {}) {
   const d3 = window.d3;
@@ -29,20 +29,15 @@ export function renderConceptMap(container, opts = {}) {
   container.innerHTML = "";
   const width = container.clientWidth || 600;
   const height = container.clientHeight || 400;
+  let currentDistance = opts.distance || 80;
 
-  // ── Font size scale ──
-  // Based on excerptCount (how many §) weighted by sourceCount (how many texts)
+  // ── Font size scale (no bold, only size varies) ──
   const maxExc = Math.max(1, ...nodes.map(n => n.excerptCount));
   const maxSrc = Math.max(1, ...nodes.map(n => n.sourceCount));
 
   function fontSize(d) {
-    // composite score: excerptCount contributes 60%, sourceCount 40%
     const score = (d.excerptCount / maxExc) * 0.6 + (d.sourceCount / maxSrc) * 0.4;
     return Math.round(11 + score * 20); // 11px to 31px
-  }
-
-  function fontWeight(d) {
-    return d.sourceCount > 1 ? "700" : (d.excerptCount > 2 ? "600" : "400");
   }
 
   // ── SVG ──
@@ -58,15 +53,28 @@ export function renderConceptMap(container, opts = {}) {
     .on("zoom", (e) => g.attr("transform", e.transform));
   svg.call(zoomBehavior);
 
+  // ── Weight normalization ──
+  const maxWeight = Math.max(1, ...links.map(l => l.weight));
+
   // ── Links ──
-  const link = g.append("g")
+  const linkG = g.append("g").attr("class", "map-links-group");
+  const link = linkG
     .selectAll("line")
     .data(links)
     .join("line")
-    .attr("class", d => `map-link ${d.shared > 0 ? "strong" : ""}`)
-    .attr("stroke-width", d => Math.max(0.5, Math.min(3, d.weight * 0.5)));
+    .attr("class", d => `map-link ${d.coExcerpt > 0 ? "strong" : "proximity"}`)
+    .attr("stroke-width", d => {
+      const norm = d.weight / maxWeight;
+      return Math.max(0.5, norm * 3);
+    })
+    .attr("stroke-dasharray", d => d.coExcerpt > 0 ? null : "3,3");
 
-  // ── Nodes (text only) ──
+  // initial edge visibility
+  if (opts.showEdges === false) {
+    linkG.style("display", "none");
+  }
+
+  // ── Nodes (text only, no bold) ──
   const node = g.append("g")
     .selectAll("g")
     .data(nodes)
@@ -78,11 +86,11 @@ export function renderConceptMap(container, opts = {}) {
     .attr("text-anchor", "middle")
     .attr("dy", "0.35em")
     .style("font-size", d => `${fontSize(d)}px`)
-    .style("font-weight", d => fontWeight(d))
+    .style("font-weight", "400")
     .style("fill", d => getThemeColor(d.themeId))
     .style("cursor", "pointer");
 
-  // ── Measure text bounding boxes for collision ──
+  // ── Measure bounding boxes for collision ──
   const textSizes = new Map();
   node.each(function(d) {
     const textEl = this.querySelector("text");
@@ -99,24 +107,44 @@ export function renderConceptMap(container, opts = {}) {
   }
 
   // ── Simulation ──
-  const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links)
-      .id(d => d.id)
-      .distance(80)
-      .strength(d => Math.min(0.5, d.weight * 0.1))
-    )
-    .force("charge", d3.forceManyBody()
-      .strength(d => -50 - fontSize(d) * 3)
-    )
-    .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide(d => collideRadius(d)).iterations(3))
-    .force("x", d3.forceX(width / 2).strength(0.03))
-    .force("y", d3.forceY(height / 2).strength(0.03));
+  const linkForce = d3.forceLink(links)
+    .id(d => d.id)
+    .distance(d => {
+      // links fuertes → cerca; links débiles → lejos
+      const norm = d.weight / maxWeight; // 0..1
+      return currentDistance * (1.8 - norm * 1.5); // rango: 0.3x .. 1.8x de la distancia base
+    })
+    .strength(d => {
+      // links fuertes tiran mucho más
+      const norm = d.weight / maxWeight;
+      return 0.05 + norm * 0.8; // 0.05 .. 0.85
+    });
 
-  // attach drag now that simulation exists
+  // Nodos sin links → identificarlos para empujarlos a la periferia
+  const linkedIds = new Set();
+  for (const l of links) {
+    linkedIds.add(typeof l.source === "object" ? l.source.id : l.source);
+    linkedIds.add(typeof l.target === "object" ? l.target.id : l.target);
+  }
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", linkForce)
+    .force("charge", d3.forceManyBody()
+      .strength(d => {
+        // nodos conectados se repelen moderadamente
+        // nodos sueltos se repelen más fuerte → van a la periferia
+        if (!linkedIds.has(d.id)) return -150 - fontSize(d) * 4;
+        return -60 - fontSize(d) * 3;
+      })
+    )
+    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.3))
+    .force("collide", d3.forceCollide(d => collideRadius(d) + 2).iterations(4))
+    .force("x", d3.forceX(width / 2).strength(d => linkedIds.has(d.id) ? 0.02 : 0.01))
+    .force("y", d3.forceY(height / 2).strength(d => linkedIds.has(d.id) ? 0.02 : 0.01));
+
   node.call(makeDrag(d3, simulation));
 
-  // ── Selection state ──
+  // ── Selection ──
   let _selectedId = null;
 
   function applySelection(conceptId) {
@@ -125,7 +153,7 @@ export function renderConceptMap(container, opts = {}) {
       node.attr("opacity", 1);
       node.select("text")
         .style("fill", d => getThemeColor(d.themeId))
-        .style("font-weight", d => fontWeight(d));
+        .style("font-weight", "400");
       link.attr("stroke-opacity", 0.4);
       return;
     }
@@ -138,8 +166,9 @@ export function renderConceptMap(container, opts = {}) {
     node.select("text").style("fill", d =>
       d.id === conceptId ? "var(--accent)" : getThemeColor(d.themeId)
     );
+    // selected node gets slightly heavier, not bold
     node.select("text").style("font-weight", d =>
-      d.id === conceptId ? "700" : fontWeight(d)
+      d.id === conceptId ? "500" : "400"
     );
     link.attr("stroke-opacity", l =>
       (l.source.id === conceptId || l.target.id === conceptId) ? 0.8 : 0.05
@@ -193,8 +222,23 @@ export function renderConceptMap(container, opts = {}) {
     node.attr("transform", d => `translate(${d.x},${d.y})`);
   });
 
+  // ── Controller ──
   return {
     simulation,
+
+    setDistance(dist) {
+      currentDistance = dist;
+      linkForce.distance(d => {
+        const norm = d.weight / maxWeight;
+        return dist * (1.8 - norm * 1.5);
+      });
+      simulation.alpha(0.6).restart();
+    },
+
+    setEdgesVisible(visible) {
+      linkG.style("display", visible ? null : "none");
+    },
+
     highlightNode(conceptId) {
       applySelection(conceptId);
       if (simulation.alpha() > 0.1) {
@@ -206,6 +250,7 @@ export function renderConceptMap(container, opts = {}) {
         centerOnNode(conceptId);
       }
     },
+
     clearHighlight() {
       applySelection(null);
     },

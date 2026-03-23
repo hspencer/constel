@@ -1,5 +1,38 @@
 /* Tab 3: Mapa & Temas */
 
+/* ── Map controls ──────────────────────────────────────────────────────── */
+.map-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.map-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.map-control input[type="range"] {
+  width: 80px;
+  height: 4px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.map-control input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.toggle-label {
+  user-select: none;
+}
+
 /* Contenedor del mapa D3 */
 .map-content {
   padding: 0 !important;
@@ -22,13 +55,18 @@
 }
 
 .map-link {
-  stroke: var(--border);
-  stroke-opacity: 0.5;
+  stroke: var(--muted);
+  stroke-opacity: 0.15;
 }
 
 .map-link.strong {
-  stroke-opacity: 0.8;
-  stroke-width: 2;
+  stroke: var(--accent);
+  stroke-opacity: 0.4;
+}
+
+.map-link.proximity {
+  stroke: var(--muted);
+  stroke-opacity: 0.12;
 }
 
 /* Panel derecho: detalle del tema */
@@ -155,6 +193,81 @@
   margin-bottom: var(--space-xs);
 }
 
+.note-editor textarea {
+  width: 100%;
+  min-height: 200px;
+  max-height: 60vh;
+  resize: vertical;
+  font-family: var(--font-reading);
+  font-size: 1rem;
+  line-height: 1.7;
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.note-editor textarea:focus {
+  border-color: var(--accent);
+}
+
+/* ── Toggle conceptos ─────────────────────────────────────────────────── */
+.btn-toggle-concepts {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--accent);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font);
+}
+
+.btn-toggle-concepts:hover {
+  text-decoration: underline;
+}
+
+/* ── Chevron icons ────────────────────────────────────────────────────── */
+.chevron-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  filter: var(--icon-filter, none);
+}
+
+.btn-toggle-concepts:hover .chevron-icon,
+.btn-icon-only:hover .chevron-icon {
+  opacity: 1;
+}
+
+.btn-icon-only {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Concept label en excerpt items del tema ──────────────────────────── */
+.excerpt-concept-label {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.theme-excerpts-section {
+  margin-top: var(--space-md);
+}
+
 /* Lista de excerpts en el detalle */
 .excerpt-list {
   display: flex;
@@ -167,14 +280,43 @@
   background: var(--surface);
   border-left: 3px solid var(--accent);
   border-radius: 0 var(--radius) var(--radius) 0;
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
   cursor: pointer;
   transition: all var(--duration) var(--ease);
 }
 
 .excerpt-item:hover {
-  background: var(--accent-light);
+  background: var(--mark-bg);
+}
+
+.excerpt-quote {
+  font-family: var(--font-reading);
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.excerpt-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.excerpt-meta strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.excerpt-meta-arrow {
+  color: var(--muted);
+}
+
+.excerpt-meta-source {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .excerpt-source {

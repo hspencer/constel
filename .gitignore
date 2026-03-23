@@ -1,7 +1,21 @@
 node_modules/
-data/constel-db.json
-data/versions/
-corpus/*.txt
 .env
 .DS_Store
-constel/
+
+# datos de sesión (cada instancia genera los suyos)
+data/constel-db.json
+data/constel-db.backup-*.json
+data/versions/
+data/session-id.txt
+
+# los textos del corpus son propios de cada proyecto
+corpus/*.txt
+corpus/*.md
+
+# editores y herramientas
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+.claude/

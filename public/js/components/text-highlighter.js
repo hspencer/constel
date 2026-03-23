@@ -118,13 +118,13 @@ function showExcerptTooltip(mark, onExcerptClick) {
     .filter(Boolean);
 
   const conceptChips = concepts.map(c =>
-    `<span class="tooltip-concept">[${escapeHtml(c.label)}]</span>`
+    `<span class="tooltip-concept">${escapeHtml(c.label)}</span>`
   ).join(" ");
 
   _tooltip.innerHTML = `
     <div class="tooltip-concepts">${conceptChips}</div>
     <div class="tooltip-actions">
-      <button class="tooltip-btn" data-action="delete" title="Eliminar excerpt">🗑</button>
+      <button class="tooltip-btn tooltip-delete" data-action="delete" title="Eliminar excerpt">✕</button>
     </div>
   `;
 
