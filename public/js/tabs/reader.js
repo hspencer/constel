@@ -51,15 +51,35 @@ export function initReaderTab() {
     closeConceptDetail();
   });
 
-  // concept detail: delete
+  // concept detail: delete (custom confirm dialog)
+  const confirmOverlay = document.getElementById("confirmDeleteOverlay");
+  const confirmMsg = document.getElementById("confirmDeleteMsg");
+  const confirmOk = document.getElementById("confirmDeleteOk");
+  const confirmCancel = document.getElementById("confirmDeleteCancel");
+
   document.getElementById("conceptDetailDelete")?.addEventListener("click", () => {
     if (!selectedConceptId) return;
     const c = state.concepts[selectedConceptId];
     if (!c) return;
-    if (confirm(`¿Eliminar concepto [${c.label}]? Se desvinculará de todos sus excerpts.`)) {
+    const excerptCount = Object.values(state.excerpts).filter(e => e.conceptIds?.includes(selectedConceptId)).length;
+    confirmMsg.textContent = `¿Eliminar «${c.label}»? Tiene ${excerptCount} sección${excerptCount !== 1 ? "es" : ""}.`;
+    confirmOverlay.classList.add("visible");
+  });
+
+  confirmOk?.addEventListener("click", () => {
+    confirmOverlay.classList.remove("visible");
+    if (selectedConceptId) {
       removeConcept(selectedConceptId);
       closeConceptDetail();
     }
+  });
+
+  confirmCancel?.addEventListener("click", () => {
+    confirmOverlay.classList.remove("visible");
+  });
+
+  confirmOverlay?.addEventListener("click", (e) => {
+    if (e.target === confirmOverlay) confirmOverlay.classList.remove("visible");
   });
 
   // concept detail: add section

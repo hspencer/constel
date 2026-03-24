@@ -1,6 +1,6 @@
 {
   "name": "constel",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "con§tel — herramienta de análisis temático de corpus textuales",
   "scripts": {

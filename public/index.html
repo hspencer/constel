@@ -108,8 +108,20 @@
           </div>
           <div class="concept-detail-excerpts" id="conceptDetailExcerpts"></div>
           <div class="concept-detail-actions">
-            <button class="btn-sm btn-danger" id="conceptDetailDelete" data-i18n="reader.delete_concept">Eliminar concepto</button>
+            <button class="btn-icon btn-delete-concept" id="conceptDetailDelete" title="Eliminar concepto">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
             <button class="btn-sm" id="conceptDetailAddExcerpt" data-i18n="reader.add_section">+ Agregar sección</button>
+          </div>
+          <!-- Confirm delete dialog -->
+          <div class="confirm-delete-overlay" id="confirmDeleteOverlay">
+            <div class="confirm-delete-dialog">
+              <p id="confirmDeleteMsg"></p>
+              <div class="confirm-delete-buttons">
+                <button class="btn-sm" id="confirmDeleteCancel">Cancelar</button>
+                <button class="btn-sm btn-confirm-delete" id="confirmDeleteOk">Eliminar</button>
+              </div>
+            </div>
           </div>
         </div>
         <!-- Derecha: texto -->

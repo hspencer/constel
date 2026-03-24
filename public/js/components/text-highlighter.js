@@ -121,16 +121,24 @@ function showExcerptTooltip(mark, onExcerptClick) {
     `<span class="tooltip-concept">${escapeHtml(c.label)}</span>`
   ).join(" ");
 
+  const trashSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+
   _tooltip.innerHTML = `
     <div class="tooltip-concepts">${conceptChips}</div>
     <div class="tooltip-actions">
-      <button class="tooltip-btn tooltip-delete" data-action="delete" title="Eliminar excerpt">✕</button>
+      <button class="tooltip-btn tooltip-delete" data-action="delete" title="Eliminar sección">${trashSvg}</button>
+    </div>
+    <div class="tooltip-confirm" style="display:none">
+      <span class="tooltip-confirm-msg">¿Eliminar sección?</span>
+      <button class="tooltip-confirm-yes">Eliminar</button>
+      <button class="tooltip-confirm-no">No</button>
     </div>
   `;
 
   // posicionar
   const rect = mark.getBoundingClientRect();
   _tooltip.style.display = "flex";
+  _tooltip.classList.remove("confirming");
 
   // medir tooltip
   const tooltipRect = _tooltip.getBoundingClientRect();
@@ -147,11 +155,25 @@ function showExcerptTooltip(mark, onExcerptClick) {
   _tooltip.style.left = left + "px";
   _tooltip.style.top = top + "px";
 
-  // acciones
+  // acciones: mostrar confirmación
   _tooltip.querySelector('[data-action="delete"]')?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    _tooltip.classList.add("confirming");
+    _tooltip.querySelector(".tooltip-confirm").style.display = "flex";
+  });
+
+  // confirmar eliminación
+  _tooltip.querySelector(".tooltip-confirm-yes")?.addEventListener("click", (e) => {
     e.stopPropagation();
     removeExcerpt(excId);
     hideExcerptTooltip();
+  });
+
+  // cancelar
+  _tooltip.querySelector(".tooltip-confirm-no")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    _tooltip.classList.remove("confirming");
+    _tooltip.querySelector(".tooltip-confirm").style.display = "none";
   });
 
   // click en un chip de concepto → abrir detalle en sidebar
