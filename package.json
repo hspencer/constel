@@ -5,7 +5,8 @@
   "description": "con§tel — herramienta de análisis temático de corpus textuales",
   "scripts": {
     "start": "node server.mjs",
-    "init": "node scripts/init.mjs"
+    "init": "node scripts/init.mjs",
+    "version": "node -e \"const v=require('./package.json').version; require('fs').writeFileSync('public/version.json',JSON.stringify({version:v})+'\\n')\""
   },
   "keywords": [
     "thematic-analysis",

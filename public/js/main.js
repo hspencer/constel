@@ -55,10 +55,14 @@ async function boot() {
   const s = getStats();
   showStatus(`${s.sources} fuentes · ${s.excerpts} § · ${s.concepts} conceptos`);
 
-  // Version: read from health endpoint or fallback
+  // Version: health endpoint → fallback to version.json
   try {
-    const health = await fetch("/api/health").then(r => r.json()).catch(() => null);
-    const ver = health?.version;
+    const health = await fetch("/api/health").then(r => r.ok ? r.json() : null).catch(() => null);
+    let ver = health?.version;
+    if (!ver) {
+      const vf = await fetch("version.json").then(r => r.ok ? r.json() : null).catch(() => null);
+      ver = vf?.version;
+    }
     if (ver) {
       const v = document.getElementById("appVersion");
       if (v) v.textContent = "v" + ver;
