@@ -41,7 +41,7 @@ Lista los textos del corpus con sus metadatos. Incluye un **buscador full-text**
 
 ![Pestaña Lector](docs/tab2.png)
 
-Tres paneles: glosa cronológica | minimap | texto.
+Tres paneles: glosa cronológica | minimap | texto. El botón de ojo (junto al título del documento) permite ocultar/mostrar las marcas de excerpts para una lectura limpia.
 
 **Glosa cronológica** (izquierda): lista vertical de todos los conceptos presentes en el texto, ordenados por primera aparición. Los conceptos que aparecen en múltiples pasajes son más prominentes. El ancho se ajusta con el resizer draggable.
 
@@ -61,7 +61,7 @@ Tres paneles: glosa cronológica | minimap | texto.
 
 Dos paneles: grafo de conceptos | gestión de temas.
 
-**Grafo force-directed**: todos los conceptos del corpus como etiquetas de texto. Su tamaño tipográfico refleja la frecuencia (cantidad de excerpts × cantidad de fuentes). Sin negrita, solo varía el tamaño (11px–31px).
+**Grafo force-directed** con switch **2D/3D**: todos los conceptos del corpus como etiquetas de texto. Su tamaño tipográfico refleja la frecuencia (cantidad de excerpts × cantidad de fuentes). Sin negrita, solo varía el tamaño (11px–31px).
 
 #### Topología del mapa
 
@@ -69,11 +69,14 @@ Los conceptos se conectan por **co-excerpt**: dos conceptos se vinculan si y sol
 
 El peso del link = cantidad de excerpts compartidos. Más co-ocurrencias → más cerca en el mapa.
 
+Los conceptos agrupados en un mismo **tema** se atraen hacia su centroide y se conectan con líneas punteadas del color del tema.
+
 **Controles**:
+- **Switch 2D/3D**: alterna entre visualización SVG plana y grafo WebGL tridimensional
 - **Umbral ≥ N**: filtra links por mínimo de secciones compartidas — permite podar y revelar la estructura fuerte
 - **Fuerza**: regula la atracción entre nodos conectados (suelto ↔ apretado)
-- **Toggle aristas**: mostrar/ocultar las líneas
-- **Zoom y paneo**: rueda del mouse + arrastrar
+- **Toggle aristas**: mostrar/ocultar las líneas (incluye las de centroide temático)
+- **Zoom y paneo**: rueda del mouse + arrastrar (en 3D: orbitar con drag, pan con Espacio + drag)
 
 **Panel de temas** (derecha): espacio de síntesis del investigador.
 
@@ -121,7 +124,8 @@ Todo el estado vive en un único archivo JSON legible, versionable con git, triv
 
 - Vanilla JavaScript (ES6 modules), HTML5, CSS3
 - Node.js con HTTP nativo (sin frameworks, sin npm dependencies)
-- D3.js para el grafo de conceptos
+- D3.js para el grafo 2D de conceptos
+- Three.js + 3d-force-graph para el grafo 3D
 - JSZip para export/import
 - Google Fonts: Gabarito (UI) + Sorts Mill Goudy (lectura)
 - Persistencia: localStorage + JSON file

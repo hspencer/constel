@@ -47,7 +47,87 @@
   user-select: none;
 }
 
-/* Contenedor del mapa D3 */
+/* iOS-style 2D/3D toggle switch */
+.map-mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.map-mode-switch .mode-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.map-mode-switch .mode-label[data-mode="2d"] {
+  color: var(--accent);
+}
+
+.map-mode-switch input[type="checkbox"]:checked ~ .mode-label[data-mode="3d"] {
+  color: var(--accent);
+}
+
+.map-mode-switch input[type="checkbox"]:checked ~ .mode-label[data-mode="2d"],
+.map-mode-switch input[type="checkbox"]:checked + .mode-slider + .mode-label[data-mode="2d"] {
+  color: var(--muted);
+}
+
+/* The labels are siblings: 2D label is before the checkbox, so use :has */
+.map-mode-switch:has(input:checked) .mode-label[data-mode="2d"] {
+  color: var(--muted);
+}
+
+.map-mode-switch:has(input:checked) .mode-label[data-mode="3d"] {
+  color: var(--accent);
+}
+
+.map-mode-switch:has(input:not(:checked)) .mode-label[data-mode="2d"] {
+  color: var(--accent);
+}
+
+.map-mode-switch:has(input:not(:checked)) .mode-label[data-mode="3d"] {
+  color: var(--muted);
+}
+
+.map-mode-switch input[type="checkbox"] {
+  display: none;
+}
+
+.mode-slider {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  background: var(--border);
+  border-radius: 9px;
+  transition: background 0.2s;
+}
+
+.mode-slider::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+
+.map-mode-switch input[type="checkbox"]:checked + .mode-slider {
+  background: var(--accent);
+}
+
+.map-mode-switch input[type="checkbox"]:checked + .mode-slider::after {
+  transform: translateX(16px);
+}
+
+/* Contenedor del mapa D3 / 3D */
 .map-content {
   padding: 0 !important;
   position: relative;
@@ -57,6 +137,11 @@
 .map-content svg {
   width: 100%;
   height: 100%;
+}
+
+.map-content canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Nodos del grafo (modo título) */

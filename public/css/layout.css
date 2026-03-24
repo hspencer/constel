@@ -143,12 +143,11 @@ body {
 .tab-source-title {
   display: none;
   align-items: center;
+  gap: var(--space-sm);
   margin-left: var(--space-md);
+  flex: 1;
+  min-width: 0;
   color: var(--accent);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 50vw;
   font-size: 1.125rem;
   font-weight: 600;
   font-family: var(--font-reading);
@@ -157,6 +156,26 @@ body {
 
 .tab-source-title.visible {
   display: flex;
+}
+
+.tab-source-title #readerTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Eye toggle for marks visibility */
+.marks-toggle {
+  margin-left: auto;
+  margin-right: var(--space-md);
+  flex-shrink: 0;
+  color: var(--accent);
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.marks-toggle:hover {
+  opacity: 1;
 }
 
 /* ── SVG icon inside buttons ─────────────────────────────────────────── */

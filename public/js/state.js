@@ -21,6 +21,10 @@ export const state = {
   concepts: {},
   themes: {},
   notes: {},
+  // UI state (no persisted)
+  ui: {
+    selectedConceptId: null, // concepto actualmente seleccionado (compartido entre tabs)
+  },
 };
 
 // ── Pub/Sub ─────────────────────────────────────────────────────────────────
@@ -383,4 +387,15 @@ export function getStats() {
     themes: Object.keys(state.themes).length,
     notes: Object.keys(state.notes).length,
   };
+}
+
+// ── UI State ────────────────────────────────────────────────────────────────
+
+export function setSelectedConcept(conceptId) {
+  state.ui.selectedConceptId = conceptId;
+  // No notify() — UI state no se guarda en disco
+}
+
+export function getSelectedConcept() {
+  return state.ui.selectedConceptId;
 }

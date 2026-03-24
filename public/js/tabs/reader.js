@@ -5,6 +5,7 @@ import {
   addExcerpt, addConcept, addConceptToExcerpt,
   findConceptByLabel, getExcerptsForSource, getExcerptsForConcept, getSource,
   removeConcept, renameConcept, removeConceptFromExcerpt, removeExcerpt,
+  setSelectedConcept, getSelectedConcept,
 } from "../state.js";
 import { navigateTo } from "../router.js";
 import { renderHighlightedText, scrollToExcerpt, getRenderedSourceText } from "../components/text-highlighter.js";
@@ -21,6 +22,7 @@ let autocompleteController = null;
 let glossController = null;
 let selectedConceptId = null;
 let lastExcerptHash = "";
+let marksVisible = true;
 
 export function initReaderTab() {
   const popup = document.getElementById("excerptPopup");
@@ -99,6 +101,7 @@ export function initReaderTab() {
   });
 
   initResizer();
+  initMarksToggle();
 }
 
 export async function onReaderActivated(params) {
@@ -182,6 +185,9 @@ function renderTextAndMinimap(sourceId, text) {
     }
   });
 
+  // preserve marks visibility state after re-render
+  readerContent.classList.toggle("marks-hidden", !marksVisible);
+
   renderMinimap(minimapContainer, sourceId, text.length, scrollContainer);
 }
 
@@ -217,6 +223,7 @@ function openConceptDetail(conceptId) {
   if (!c) return;
 
   selectedConceptId = conceptId;
+  setSelectedConcept(conceptId); // actualizar selección global
   const panel = document.getElementById("conceptDetail");
   const labelInput = document.getElementById("conceptDetailLabel");
 
@@ -237,6 +244,7 @@ function openConceptDetail(conceptId) {
 
 function closeConceptDetail() {
   selectedConceptId = null;
+  setSelectedConcept(null); // limpiar selección global
   document.getElementById("conceptDetail").hidden = true;
   if (glossController) glossController.update(null);
 }
@@ -499,6 +507,21 @@ function showToast(message) {
   toast.textContent = message;
   document.body.appendChild(toast);
   toast.addEventListener("animationend", () => toast.remove());
+}
+
+function initMarksToggle() {
+  const btn = document.getElementById("marksToggle");
+  const icon = document.getElementById("marksToggleIcon");
+  if (!btn || !icon) return;
+
+  btn.addEventListener("click", () => {
+    marksVisible = !marksVisible;
+    icon.src = marksVisible ? "icons/icons_eye-open.svg" : "icons/icons_eye-close.svg";
+    const readerContent = document.getElementById("readerTextContent");
+    if (readerContent) {
+      readerContent.classList.toggle("marks-hidden", !marksVisible);
+    }
+  });
 }
 
 function initResizer() {

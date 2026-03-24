@@ -58,7 +58,50 @@ export function renderConceptMap(container, opts = {}) {
   let visibleLinks = allLinks.filter(l => l.weight >= currentThreshold);
   const maxWeight = Math.max(1, ...allLinks.map(l => l.weight));
 
-  // ── Links ──
+  // ── Aristas al centroide del grupo (permanentes) ──
+  const centroidG = g.append("g").attr("class", "map-centroid-links");
+
+  // Calcular centroides de grupos
+  const groupCentroids = new Map();
+  function updateGroupCentroids() {
+    groupCentroids.clear();
+    const groups = new Map();
+
+    for (const node of nodes) {
+      if (!node.themeId) continue;
+      if (!groups.has(node.themeId)) groups.set(node.themeId, []);
+      groups.get(node.themeId).push(node);
+    }
+
+    for (const [themeId, groupNodes] of groups) {
+      if (groupNodes.length < 2) continue;
+      let cx = 0, cy = 0;
+      for (const n of groupNodes) {
+        cx += n.x || 0;
+        cy += n.y || 0;
+      }
+      cx /= groupNodes.length;
+      cy /= groupNodes.length;
+      groupCentroids.set(themeId, { x: cx, y: cy, color: getThemeColor(themeId) });
+    }
+  }
+
+  // Crear aristas al centroide
+  function getCentroidLinks() {
+    const links = [];
+    for (const node of nodes) {
+      if (!node.themeId) continue;
+      const centroid = groupCentroids.get(node.themeId);
+      if (centroid) {
+        links.push({ node, centroid });
+      }
+    }
+    return links;
+  }
+
+  let centroidLinks = centroidG.selectAll("line").data([]);
+
+  // ── Links (entre nodos) ──
   const linkG = g.append("g").attr("class", "map-links-group");
   let link = linkG
     .selectAll("line")
@@ -73,6 +116,7 @@ export function renderConceptMap(container, opts = {}) {
   // initial edge visibility
   if (opts.showEdges === false) {
     linkG.style("display", "none");
+    centroidG.style("display", "none");
   }
 
   // ── Nodes (text only, no bold, multiline at 40 chars) ──
@@ -209,6 +253,47 @@ export function renderConceptMap(container, opts = {}) {
   }
   let linkedIds = computeLinkedIds();
 
+  // ── Fuerza de atracción al centroide del grupo (tema) ──
+  function forceGroupCentroid() {
+    let _nodes;
+    const strength = 0.15; // ajustable
+
+    function force(alpha) {
+      // Agrupar nodos por themeId
+      const groups = new Map();
+      for (const node of _nodes) {
+        const tid = node.themeId || "__none__";
+        if (!groups.has(tid)) groups.set(tid, []);
+        groups.get(tid).push(node);
+      }
+
+      // Para cada grupo, calcular centroide y atraer nodos hacia él
+      for (const [tid, groupNodes] of groups) {
+        if (groupNodes.length < 2) continue; // solo si hay más de un nodo
+
+        // Calcular centroide
+        let cx = 0, cy = 0;
+        for (const n of groupNodes) {
+          cx += n.x;
+          cy += n.y;
+        }
+        cx /= groupNodes.length;
+        cy /= groupNodes.length;
+
+        // Atraer cada nodo hacia el centroide
+        for (const n of groupNodes) {
+          const dx = cx - n.x;
+          const dy = cy - n.y;
+          n.vx += dx * strength * alpha;
+          n.vy += dy * strength * alpha;
+        }
+      }
+    }
+
+    force.initialize = function(nodes) { _nodes = nodes; };
+    return force;
+  }
+
   const simulation = d3.forceSimulation(nodes)
     .force("link", linkForce)
     .force("charge", d3.forceManyBody()
@@ -219,6 +304,7 @@ export function renderConceptMap(container, opts = {}) {
     )
     .force("center", d3.forceCenter(width / 2, height / 2).strength(0.4))
     .force("rectCollide", forceRectCollide())
+    .force("groupCentroid", forceGroupCentroid())
     .force("x", d3.forceX(width / 2).strength(d => linkedIds.has(d.id) ? 0.03 : 0.01))
     .force("y", d3.forceY(height / 2).strength(d => linkedIds.has(d.id) ? 0.03 : 0.01));
 
@@ -294,11 +380,30 @@ export function renderConceptMap(container, opts = {}) {
 
   // ── Tick ──
   simulation.on("tick", () => {
+    // Actualizar centroides
+    updateGroupCentroids();
+
+    // Aristas entre nodos
     link
       .attr("x1", d => d.source.x)
       .attr("y1", d => d.source.y)
       .attr("x2", d => d.target.x)
       .attr("y2", d => d.target.y);
+
+    // Aristas al centroide
+    centroidLinks = centroidG.selectAll("line")
+      .data(getCentroidLinks())
+      .join("line")
+      .attr("class", "map-centroid-link")
+      .attr("x1", d => d.node.x)
+      .attr("y1", d => d.node.y)
+      .attr("x2", d => d.centroid.x)
+      .attr("y2", d => d.centroid.y)
+      .attr("stroke", d => d.centroid.color)
+      .attr("stroke-width", 1)
+      .attr("stroke-opacity", 0.3)
+      .attr("stroke-dasharray", "2,2");
+
     node.attr("transform", d => `translate(${d.x},${d.y})`);
   });
 
@@ -311,7 +416,7 @@ export function renderConceptMap(container, opts = {}) {
       visibleLinks = allLinks.filter(l => l.weight >= thresh);
       linkedIds = computeLinkedIds();
 
-      // update links
+      // update links (entre nodos) - NO afecta las aristas de centroide
       link = linkG.selectAll("line")
         .data(visibleLinks, d => `${typeof d.source === "object" ? d.source.id : d.source}::${typeof d.target === "object" ? d.target.id : d.target}`)
         .join("line")
@@ -345,6 +450,7 @@ export function renderConceptMap(container, opts = {}) {
 
     setEdgesVisible(visible) {
       linkG.style("display", visible ? null : "none");
+      centroidG.style("display", visible ? null : "none");
     },
 
     highlightNode(conceptId) {

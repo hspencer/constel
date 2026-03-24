@@ -19,7 +19,7 @@
 <body>
   <!-- Shell principal -->
   <header class="shell-header">
-    <h1 class="logo">con<span class="section-sign">§</span>tel <span class="version">0.1.0</span></h1>
+    <h1 class="logo">con<span class="section-sign">§</span>tel <span class="version">0.2.0</span></h1>
     <div class="header-actions">
       <span class="status-msg" id="statusMsg"></span>
       <div class="dropdown" id="bibliotecaDropdown">
@@ -49,6 +49,9 @@
     </button>
     <span class="tab-source-title" id="tabSourceTitle">
       <span id="readerTitle"></span>
+      <button class="btn-icon marks-toggle" id="marksToggle" title="Mostrar/ocultar marcas">
+        <img src="icons/icons_eye-open.svg" id="marksToggleIcon" alt="marcas" width="18" height="18">
+      </button>
     </span>
   </nav>
 
@@ -119,6 +122,12 @@
           <div class="panel-header">
             <h2 data-i18n="map.title">Mapa de conceptos</h2>
             <div class="map-controls">
+              <label class="map-control map-mode-switch" title="Modo de visualización">
+                <span class="mode-label" data-mode="2d">2D</span>
+                <input type="checkbox" id="mapModeToggle">
+                <span class="mode-slider"></span>
+                <span class="mode-label" data-mode="3d">3D</span>
+              </label>
               <label class="map-control" title="Umbral: mostrar links con ≥ N secciones compartidas">
                 <span class="control-label">≥</span>
                 <input type="range" id="mapThresholdSlider" min="1" max="5" value="1" step="1">
@@ -161,9 +170,11 @@
     </div>
   </div>
 
-  <!-- D3.js + JSZip via CDN (sin build step) -->
+  <!-- D3.js + JSZip + Three.js + 3D Force Graph via CDN (sin build step) -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.79.1/dist/3d-force-graph.min.js"></script>
   <!-- Módulos JS -->
   <script type="module" src="js/main.js"></script>
 </body>

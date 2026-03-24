@@ -7,12 +7,16 @@ import {
   addNote, updateNote, getNotesForTheme,
   getConceptsForTheme, getUngroupedConcepts,
   getExcerptsForConcept, getThemeColor,
+  getSelectedConcept, setSelectedConcept,
 } from "../state.js";
 import { navigateTo } from "../router.js";
 import { renderConceptMap } from "../components/concept-map.js";
+import { renderConceptMap3D, cleanupGraph3D } from "../components/concept-map-3d.js";
 
 let currentSelection = null; // { type: "concept"|"theme", id: string }
 let mapCtrl = null;
+let mapMode = "2d"; // "2d" | "3d"
+let conceptsSectionOpen = false; // estado de apertura de la sección colapsable de conceptos
 
 export function initThemesTab() {
   subscribe(() => {
@@ -33,15 +37,43 @@ export function initThemesTab() {
 }
 
 export function onThemesActivated() {
+  // Verificar si hay un concepto seleccionado globalmente
+  const selectedConceptId = getSelectedConcept();
+
   renderMap();
+
+  // Si hay un concepto seleccionado, aplicar selección en el mapa
+  if (selectedConceptId && state.concepts[selectedConceptId]) {
+    currentSelection = { type: "concept", id: selectedConceptId };
+
+    // Resaltar y centrar en el mapa después de que se inicialice
+    if (mapCtrl) {
+      // Esperar un poco para que el mapa se estabilice
+      setTimeout(() => {
+        if (mapCtrl) {
+          mapCtrl.highlightNode(selectedConceptId);
+        }
+      }, 100);
+    }
+  }
+
   renderThemeDetail();
+}
+
+function destroyCurrentMap() {
+  if (mapCtrl) {
+    if (mapCtrl.simulation) mapCtrl.simulation.stop();
+    if (mapCtrl.destroy) mapCtrl.destroy();
+    mapCtrl = null;
+  }
+  cleanupGraph3D();
 }
 
 function renderMap() {
   const container = document.getElementById("mapContainer");
   if (!container) return;
 
-  if (mapCtrl) { mapCtrl.simulation.stop(); mapCtrl = null; }
+  destroyCurrentMap();
 
   // read current control values
   const threshSlider = document.getElementById("mapThresholdSlider");
@@ -49,35 +81,48 @@ function renderMap() {
   const threshold = threshSlider ? parseInt(threshSlider.value) : 1;
   const showEdges = edgeToggle ? edgeToggle.checked : true;
 
-  mapCtrl = renderConceptMap(container, {
+  const mapOpts = {
     threshold,
     showEdges,
     onClickConcept: (conceptId) => {
       currentSelection = { type: "concept", id: conceptId };
+      setSelectedConcept(conceptId);
       renderThemeDetail();
     },
-  });
+  };
+
+  if (mapMode === "3d") {
+    mapCtrl = renderConceptMap3D(container, mapOpts);
+  } else {
+    mapCtrl = renderConceptMap(container, mapOpts);
+  }
 }
 
 function initMapControls() {
+  const modeToggle = document.getElementById("mapModeToggle");
   const threshSlider = document.getElementById("mapThresholdSlider");
   const threshValue = document.getElementById("mapThresholdValue");
   const strengthSlider = document.getElementById("mapStrengthSlider");
   const edgeToggle = document.getElementById("mapEdgeToggle");
 
+  modeToggle?.addEventListener("change", () => {
+    mapMode = modeToggle.checked ? "3d" : "2d";
+    renderMap();
+  });
+
   threshSlider?.addEventListener("input", () => {
     const val = parseInt(threshSlider.value);
     if (threshValue) threshValue.textContent = val;
-    if (mapCtrl) mapCtrl.setThreshold(val);
+    if (mapCtrl?.setThreshold) mapCtrl.setThreshold(val);
   });
 
   strengthSlider?.addEventListener("input", () => {
     const val = parseInt(strengthSlider.value);
-    if (mapCtrl) mapCtrl.setStrength(val / 5); // normalize 1-10 → 0.2-2.0
+    if (mapCtrl?.setStrength) mapCtrl.setStrength(val / 5);
   });
 
   edgeToggle?.addEventListener("change", () => {
-    if (mapCtrl) mapCtrl.setEdgesVisible(edgeToggle.checked);
+    if (mapCtrl?.setEdgesVisible) mapCtrl.setEdgesVisible(edgeToggle.checked);
   });
 }
 
@@ -194,6 +239,7 @@ function renderConceptDetail(container, titleEl, conceptId) {
   const themes = Object.values(state.themes);
 
   let html = `
+    <button class="btn-sm" style="margin-bottom: var(--space-md)" id="backToOverviewTop">← Todos los temas</button>
     <div style="margin-bottom: var(--space-md)">
       <label style="font-size: var(--font-size-sm); color: var(--muted)">Tema:</label>
       <select id="conceptThemeSelect" style="margin-left: var(--space-sm); padding: var(--space-xs)">
@@ -237,9 +283,12 @@ function renderConceptDetail(container, titleEl, conceptId) {
     });
   });
 
-  container.querySelector("#backToOverview")?.addEventListener("click", () => {
-    currentSelection = null;
-    renderThemeDetail();
+  const backBtns = container.querySelectorAll("#backToOverview, #backToOverviewTop");
+  backBtns.forEach(btn => {
+    btn?.addEventListener("click", () => {
+      currentSelection = null;
+      renderThemeDetail();
+    });
   });
 }
 
@@ -259,6 +308,7 @@ function renderThemeNotes(container, titleEl, themeId) {
   const excerpts = allExcerpts.filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true; });
 
   let html = `
+    <button class="btn-sm" style="margin-bottom: var(--space-md)" id="backToOverviewTop">← Todos los temas</button>
     <div class="theme-detail-top">
       <div class="theme-section-header" style="margin-bottom: var(--space-xs)">
         <span class="theme-color-dot" style="background: ${theme.color}"></span>
@@ -273,7 +323,7 @@ function renderThemeNotes(container, titleEl, themeId) {
       </div>
     </div>
 
-    <div class="theme-concepts-section" id="conceptsCollapsible" hidden>
+    <div class="theme-concepts-section" id="conceptsCollapsible" ${conceptsSectionOpen ? '' : 'hidden'}>
       <div class="theme-concepts" style="margin-bottom: var(--space-xs)">
         ${concepts.map(c => `
           <span class="concept-tag removable" style="border-color: ${theme.color}; background: ${theme.color}20"
@@ -341,10 +391,14 @@ function renderThemeNotes(container, titleEl, themeId) {
   const toggleBtn = container.querySelector("#toggleConceptsBtn");
   const collapsible = container.querySelector("#conceptsCollapsible");
   const chevron = container.querySelector("#conceptsChevron");
+
+  // Actualizar chevron según estado actual
+  chevron.src = conceptsSectionOpen ? "icons/icons_chevron-down.svg" : "icons/icons_chevron-right.svg";
+
   toggleBtn?.addEventListener("click", () => {
-    const open = collapsible.hidden;
-    collapsible.hidden = !open;
-    chevron.src = open ? "icons/icons_chevron-down.svg" : "icons/icons_chevron-right.svg";
+    conceptsSectionOpen = !conceptsSectionOpen;
+    collapsible.hidden = !conceptsSectionOpen;
+    chevron.src = conceptsSectionOpen ? "icons/icons_chevron-down.svg" : "icons/icons_chevron-right.svg";
   });
 
   // rename tema
@@ -417,9 +471,12 @@ function renderThemeNotes(container, titleEl, themeId) {
     });
   });
 
-  container.querySelector("#backToOverview")?.addEventListener("click", () => {
-    currentSelection = null;
-    renderThemeDetail();
+  const backBtns = container.querySelectorAll("#backToOverview, #backToOverviewTop");
+  backBtns.forEach(btn => {
+    btn?.addEventListener("click", () => {
+      currentSelection = null;
+      renderThemeDetail();
+    });
   });
 }
 
