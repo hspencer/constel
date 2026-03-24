@@ -14,7 +14,7 @@ import { applyTranslations, t } from "./i18n.js";
 // ── Arranque ────────────────────────────────────────────────────────────────
 
 async function boot() {
-  // 0. i18n — translate static UI
+  // 0. Version + i18n
   applyTranslations();
 
   showStatus(t("reader.loading"));
@@ -54,6 +54,16 @@ async function boot() {
   // status inicial
   const s = getStats();
   showStatus(`${s.sources} fuentes · ${s.excerpts} § · ${s.concepts} conceptos`);
+
+  // Version: read from health endpoint or fallback
+  try {
+    const health = await fetch("/api/health").then(r => r.json()).catch(() => null);
+    const ver = health?.version;
+    if (ver) {
+      const v = document.getElementById("appVersion");
+      if (v) v.textContent = "v" + ver;
+    }
+  } catch {}
 
   // en modo estático, mostrar indicador con tooltip
   if (isStaticMode()) {

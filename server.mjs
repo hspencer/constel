@@ -237,8 +237,10 @@ async function writeSessionId(id) {
 async function handleApi(req, res, pathname) {
   // GET /api/health
   if (pathname === "/api/health" && req.method === "GET") {
+    const pkg = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
     return sendJson(res, 200, {
       ok: true,
+      version: pkg.version,
       sessionId: await readSessionId(),
       dbPath: DB_PATH,
     });
