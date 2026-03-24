@@ -15,7 +15,7 @@ import { renderConceptMap3D, cleanupGraph3D } from "../components/concept-map-3d
 
 let currentSelection = null; // { type: "concept"|"theme", id: string }
 let mapCtrl = null;
-let mapMode = "2d"; // "2d" | "3d"
+let mapMode = localStorage.getItem("constel-mapMode") || "2d";
 let conceptsSectionOpen = false; // estado de apertura de la sección colapsable de conceptos
 
 export function initThemesTab() {
@@ -48,12 +48,13 @@ export function onThemesActivated() {
 
     // Resaltar y centrar en el mapa después de que se inicialice
     if (mapCtrl) {
-      // Esperar un poco para que el mapa se estabilice
+      // 3D needs more time for simulation to settle and position nodes
+      const delay = mapMode === "3d" ? 800 : 100;
       setTimeout(() => {
         if (mapCtrl) {
           mapCtrl.highlightNode(selectedConceptId);
         }
-      }, 100);
+      }, delay);
     }
   }
 
@@ -105,9 +106,21 @@ function initMapControls() {
   const strengthSlider = document.getElementById("mapStrengthSlider");
   const edgeToggle = document.getElementById("mapEdgeToggle");
 
+  // Restore saved mode
+  if (modeToggle) modeToggle.checked = mapMode === "3d";
+
   modeToggle?.addEventListener("change", () => {
     mapMode = modeToggle.checked ? "3d" : "2d";
+    localStorage.setItem("constel-mapMode", mapMode);
     renderMap();
+    // Restore selection after mode switch
+    const selId = currentSelection?.type === "concept" ? currentSelection.id : getSelectedConcept();
+    if (selId && mapCtrl) {
+      const delay = mapMode === "3d" ? 800 : 100;
+      setTimeout(() => {
+        if (mapCtrl) mapCtrl.highlightNode(selId);
+      }, delay);
+    }
   });
 
   threshSlider?.addEventListener("input", () => {

@@ -1,7 +1,7 @@
 // main.js — punto de entrada de con§tel
 // Conecta state, router, tabs y componentes.
 
-import { state, loadState, subscribe, getStats } from "./state.js";
+import { state, loadState, subscribe, getStats, notify } from "./state.js";
 import { api, isStaticMode } from "./api.js";
 import { initRouter, onTabChange } from "./router.js";
 import { getSourceText } from "./tabs/sources.js";
@@ -41,8 +41,9 @@ async function boot() {
   // 6. Toggle tema claro/oscuro
   initThemeToggle();
 
-  // 7. Export / Import
+  // 7. Export / Import / Merge
   initExportImport();
+  initMerge();
 
   // 7. Suscribirse a cambios para status
   subscribe(() => {
@@ -52,16 +53,16 @@ async function boot() {
 
   // status inicial
   const s = getStats();
-  const suffix = isStaticMode() ? " (demo)" : "";
-  showStatus(`${s.sources} fuentes · ${s.excerpts} § · ${s.concepts} conceptos${suffix}`);
+  showStatus(`${s.sources} fuentes · ${s.excerpts} § · ${s.concepts} conceptos`);
 
-  // en modo estático, indicar visualmente
+  // en modo estático, mostrar indicador con tooltip
   if (isStaticMode()) {
+    showStaticModeIndicator();
     document.getElementById("exportBtn")?.setAttribute("title", "Exportar constelación (ZIP) — incluye tus cambios locales");
     document.querySelector(".import-label")?.setAttribute("title", "Importar constelación (ZIP) — reemplaza datos locales");
   }
 
-  console.log(`con§tel iniciado${suffix}`);
+  console.log(`con§tel iniciado${isStaticMode() ? " (modo estático)" : ""}`);
 }
 
 // ── Theme toggle ────────────────────────────────────────────────────────────
@@ -89,6 +90,16 @@ function initThemeToggle() {
 function showStatus(msg) {
   const el = document.getElementById("statusMsg");
   if (el) el.textContent = msg;
+}
+
+function showStaticModeIndicator() {
+  const statusEl = document.getElementById("statusMsg");
+  if (!statusEl) return;
+  const hint = document.createElement("span");
+  hint.className = "static-mode-hint";
+  hint.textContent = "?";
+  hint.title = "Modo estático: no hay servidor conectado.\nLos cambios se guardan solo en este navegador (localStorage).\nUsa Exportar (ZIP) para llevarte tu trabajo.";
+  statusEl.appendChild(hint);
 }
 
 // ── Export / Import ─────────────────────────────────────────────────────────
@@ -250,6 +261,227 @@ function initExportImport() {
       console.error("Import error:", err);
       showStatus("Error al importar");
       importInput.value = "";
+    }
+  });
+}
+
+// ── Merge / Concatenar biblioteca ────────────────────────────────────────────
+
+function initMerge() {
+  const mergeInput = document.getElementById("mergeFile");
+  mergeInput?.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    showStatus("Concatenando...");
+    try {
+      const JSZip = window.JSZip;
+      if (!JSZip) { alert("JSZip no cargado"); return; }
+
+      const zip = await JSZip.loadAsync(file);
+
+      // 1. Extract incoming DB
+      let incoming = null;
+      const dbFile = zip.file("constel-db.json");
+      if (dbFile) {
+        incoming = JSON.parse(await dbFile.async("string"));
+      }
+      if (!incoming) {
+        showStatus("ZIP sin constel-db.json");
+        mergeInput.value = "";
+        return;
+      }
+
+      // 2. Extract corpus files
+      const incomingTexts = {};
+      const corpusFolder = zip.folder("corpus");
+      if (corpusFolder) {
+        const entries = [];
+        corpusFolder.forEach((path, entry) => { if (!entry.dir) entries.push({ path, entry }); });
+        for (const { path, entry } of entries) {
+          incomingTexts[path] = await entry.async("string");
+        }
+      }
+
+      // ── Merge logic ──
+
+      // Build lookup of existing sources by filename
+      const existingByFilename = new Map();
+      for (const src of Object.values(state.sources)) {
+        existingByFilename.set(src.filename, src);
+      }
+
+      // Build lookup of existing concepts by label (case-insensitive)
+      const existingConceptByLabel = new Map();
+      for (const c of Object.values(state.concepts)) {
+        existingConceptByLabel.set(c.label.toLowerCase(), c);
+      }
+
+      // Build lookup of existing themes by label
+      const existingThemeByLabel = new Map();
+      for (const t of Object.values(state.themes)) {
+        existingThemeByLabel.set(t.label.toLowerCase(), t);
+      }
+
+      // ID remapping: incoming ID → local ID
+      const sourceIdMap = new Map();   // incoming srcId → local srcId
+      const conceptIdMap = new Map();  // incoming conId → local conId
+      const themeIdMap = new Map();    // incoming themeId → local themeId
+
+      let addedSources = 0, addedExcerpts = 0, addedConcepts = 0, addedThemes = 0;
+
+      // 3. Merge themes
+      for (const [id, theme] of Object.entries(incoming.themes || {})) {
+        const existing = existingThemeByLabel.get(theme.label.toLowerCase());
+        if (existing) {
+          themeIdMap.set(id, existing.id);
+        } else {
+          const newId = `thm_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+          state.themes[newId] = { ...theme, id: newId };
+          themeIdMap.set(id, newId);
+          existingThemeByLabel.set(theme.label.toLowerCase(), state.themes[newId]);
+          addedThemes++;
+        }
+      }
+
+      // 4. Merge concepts (remap themeId)
+      for (const [id, concept] of Object.entries(incoming.concepts || {})) {
+        const existing = existingConceptByLabel.get(concept.label.toLowerCase());
+        if (existing) {
+          conceptIdMap.set(id, existing.id);
+          // If incoming has a theme assignment and local doesn't, adopt it
+          if (concept.themeId && !existing.themeId) {
+            existing.themeId = themeIdMap.get(concept.themeId) || null;
+          }
+        } else {
+          const newId = `con_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+          state.concepts[newId] = {
+            ...concept,
+            id: newId,
+            themeId: concept.themeId ? (themeIdMap.get(concept.themeId) || null) : null,
+          };
+          conceptIdMap.set(id, newId);
+          existingConceptByLabel.set(concept.label.toLowerCase(), state.concepts[newId]);
+          addedConcepts++;
+        }
+      }
+
+      // 5. Merge sources + their texts
+      for (const [id, src] of Object.entries(incoming.sources || {})) {
+        const existing = existingByFilename.get(src.filename);
+        if (existing) {
+          sourceIdMap.set(id, existing.id);
+        } else {
+          const newId = `src_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+          state.sources[newId] = { ...src, id: newId };
+          sourceIdMap.set(id, newId);
+          existingByFilename.set(src.filename, state.sources[newId]);
+          addedSources++;
+
+          // Store text in localStorage corpus cache
+          if (incomingTexts[src.filename]) {
+            try {
+              const cache = JSON.parse(localStorage.getItem("constel-corpus") || "{}");
+              cache[src.filename] = incomingTexts[src.filename];
+              localStorage.setItem("constel-corpus", JSON.stringify(cache));
+            } catch {}
+          }
+        }
+      }
+
+      // 6. Merge excerpts (skip duplicates by sourceId + start + end)
+      const existingExcerptKeys = new Set();
+      for (const exc of Object.values(state.excerpts)) {
+        existingExcerptKeys.add(`${exc.sourceId}:${exc.start}:${exc.end}`);
+      }
+
+      for (const [, exc] of Object.entries(incoming.excerpts || {})) {
+        // Strict remap: incoming IDs are never trusted directly
+        const localSourceId = sourceIdMap.get(exc.sourceId);
+        if (!localSourceId) continue; // source not mapped → skip
+
+        const key = `${localSourceId}:${exc.start}:${exc.end}`;
+        if (existingExcerptKeys.has(key)) continue;
+
+        const newId = `exc_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const remappedConceptIds = (exc.conceptIds || [])
+          .map(cid => conceptIdMap.get(cid))
+          .filter(Boolean); // only keep successfully remapped concepts
+
+        state.excerpts[newId] = {
+          ...exc,
+          id: newId,
+          sourceId: localSourceId,
+          conceptIds: remappedConceptIds,
+        };
+        existingExcerptKeys.add(key);
+        addedExcerpts++;
+      }
+
+      // 7. Merge notes
+      let addedNotes = 0;
+      const existingNoteKeys = new Set();
+      for (const n of Object.values(state.notes || {})) {
+        existingNoteKeys.add(`${n.themeId}:${n.text?.slice(0, 50)}`);
+      }
+      for (const [, note] of Object.entries(incoming.notes || {})) {
+        const localThemeId = themeIdMap.get(note.themeId);
+        if (!localThemeId) continue; // theme not mapped → skip
+
+        const key = `${localThemeId}:${note.text?.slice(0, 50)}`;
+        if (existingNoteKeys.has(key)) continue;
+
+        const newId = `note_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        state.notes[newId] = { ...note, id: newId, themeId: localThemeId };
+        addedNotes++;
+      }
+
+      // 8. Upload new texts to server if available
+      if (!isStaticMode()) {
+        const newFiles = [];
+        for (const [inId, src] of Object.entries(incoming.sources || {})) {
+          if (!existingByFilename.has(src.filename) || sourceIdMap.get(inId) !== inId) {
+            // was new
+            if (incomingTexts[src.filename]) {
+              newFiles.push({ filename: src.filename, content: incomingTexts[src.filename] });
+            }
+          }
+        }
+        if (newFiles.length) {
+          try {
+            await fetch("/api/import", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ db: state, files: newFiles }),
+            });
+          } catch {}
+        } else {
+          // Just save the updated DB
+          try { await api.putDb(state); } catch {}
+        }
+      }
+
+      // 9. Persist and reload
+      notify();
+      mergeInput.value = "";
+
+      const summary = [];
+      if (addedSources) summary.push(`${addedSources} fuentes`);
+      if (addedExcerpts) summary.push(`${addedExcerpts} §`);
+      if (addedConcepts) summary.push(`${addedConcepts} conceptos`);
+      if (addedThemes) summary.push(`${addedThemes} temas`);
+
+      if (summary.length) {
+        showStatus(`Concatenado: +${summary.join(", ")}`);
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showStatus("Sin datos nuevos — todo ya existía");
+      }
+
+    } catch (err) {
+      console.error("Merge error:", err);
+      showStatus("Error al concatenar");
+      mergeInput.value = "";
     }
   });
 }

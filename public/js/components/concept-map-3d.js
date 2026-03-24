@@ -53,8 +53,8 @@ export function renderConceptMap3D(container, opts = {}) {
   const root = document.documentElement;
   const cs = getComputedStyle(root);
   const isDark = root.getAttribute("data-theme") === "dark";
-  const textColor = cs.getPropertyValue("--ink").trim() || (isDark ? "#d4d4d4" : "#333");
-  const mutedColor = cs.getPropertyValue("--muted").trim() || "#999";
+  const textColor = cs.getPropertyValue("--ink").trim() || (isDark ? "#e7dada" : "#333");
+  const mutedColor = cs.getPropertyValue("--muted").trim() || "#191c636d";
 
   // ── Font size scale ──
   const maxExc = Math.max(1, ...nodes.map(n => n.excerptCount));
@@ -104,13 +104,17 @@ export function renderConceptMap3D(container, opts = {}) {
     return lines.length ? lines : [text];
   }
 
+  // ── Selection state ──
+  let selectedNodeId = null;
+
   // ── Create billboard sprite for each node ──
   function createNodeSprite(node) {
+    const selected = node.id === selectedNodeId;
     const fSize = fontSize(node);
     const themeColor = getThemeColor(node.themeId);
     const dpr = 2;
     const spriteFontSize = fSize * 3;
-    const fontStr = `${spriteFontSize * dpr}px system-ui, -apple-system, sans-serif`;
+    const fontStr = `${spriteFontSize * dpr}px Gabarito, system-ui, -apple-system, sans-serif`;
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -142,15 +146,17 @@ export function renderConceptMap3D(container, opts = {}) {
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
 
-    // pill background for legibility
+    // pill background
     const pillH = textBlockH + 12 * dpr;
     const pillW = maxLineW + hPad;
     const rx = cx - pillW / 2;
     const ry = cy - pillH / 2;
     const rr = Math.min(pillH / 2, 12 * dpr);
 
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = isDark ? "rgba(30,30,30,0.88)" : "rgba(255,255,255,0.88)";
+    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = selected
+      ? (isDark ? "rgba(30,30,30,0.97)" : "rgba(255, 255, 255, 0.93)")
+      : (isDark ? "rgba(30,30,30,0.93)" : "rgba(255, 255, 255, 0.64)");
     ctx.beginPath();
     ctx.moveTo(rx + rr, ry);
     ctx.lineTo(rx + pillW - rr, ry);
@@ -163,6 +169,13 @@ export function renderConceptMap3D(container, opts = {}) {
     ctx.quadraticCurveTo(rx, ry, rx + rr, ry);
     ctx.closePath();
     ctx.fill();
+
+    // selected: colored border around the pill
+    if (selected) {
+      ctx.strokeStyle = themeColor;
+      ctx.lineWidth = 3 * dpr;
+      ctx.stroke();
+    }
 
     // text in theme color
     ctx.globalAlpha = 1.0;
@@ -180,6 +193,7 @@ export function renderConceptMap3D(container, opts = {}) {
       depthWrite: false,
     });
     const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.renderOrder = 10; // render on top of links
 
     const worldScale = totalWidth / (dpr * 8);
     const aspect = totalWidth / totalHeight;
@@ -286,7 +300,7 @@ export function renderConceptMap3D(container, opts = {}) {
   const graph = new ForceGraph3D(container, { controlType: "orbit" })
     .width(width)
     .height(height)
-    .backgroundColor("rgba(0,0,0,0)")
+    .backgroundColor("rgba(0, 0, 0, 0)")
     .graphData({ nodes: nodes3d, links: links3d })
     .nodeThreeObject(node => createNodeSprite(node))
     .nodeThreeObjectExtend(false)
@@ -295,9 +309,10 @@ export function renderConceptMap3D(container, opts = {}) {
     .linkWidth(l => showEdges ? Math.max(0.3, (l.weight / maxWeight) * 2) : 0)
     .onNodeClick(node => {
       if (!node) return;
+      selectedNodeId = node.id;
+      graph.nodeThreeObject(n => createNodeSprite(n));
       const cam = graph.cameraPosition();
-      const lookAt = { x: node.x || 0, y: node.y || 0, z: node.z || 0 };
-      graph.cameraPosition(cam, lookAt, 600);
+      graph.cameraPosition(cam, { x: node.x, y: node.y, z: node.z }, 600);
       if (opts.onClickConcept) opts.onClickConcept(node.id);
     })
     .onNodeHover(node => {
@@ -387,17 +402,26 @@ export function renderConceptMap3D(container, opts = {}) {
     },
 
     highlightNode(conceptId) {
-      const node = nodes3d.find(n => n.id === conceptId);
-      if (node) {
-        // Move lookAt to node, keep camera where it is
-        const cam = graph.cameraPosition();
-        const lookAt = { x: node.x || 0, y: node.y || 0, z: node.z || 0 };
-        graph.cameraPosition(cam, lookAt, 800);
+      selectedNodeId = conceptId;
+      // Re-render all node sprites with new selection state
+      graph.nodeThreeObject(n => createNodeSprite(n));
+
+      // Center camera on node — retry until coordinates are available
+      function tryCenter(retries) {
+        const node = graph.graphData().nodes.find(n => n.id === conceptId);
+        if (node && node.x != null) {
+          const cam = graph.cameraPosition();
+          graph.cameraPosition(cam, { x: node.x, y: node.y, z: node.z }, 800);
+        } else if (retries > 0) {
+          setTimeout(() => tryCenter(retries - 1), 200);
+        }
       }
+      tryCenter(10);
     },
 
     clearHighlight() {
-      graph.zoomToFit(400, 60);
+      selectedNodeId = null;
+      graph.nodeThreeObject(node => createNodeSprite(node));
     },
 
     destroy() {

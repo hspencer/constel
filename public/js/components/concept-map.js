@@ -177,12 +177,15 @@ export function renderConceptMap(container, opts = {}) {
   });
 
   // Padding around each text bounding box
-  const PAD = 4;
+  // Height is compressed to avoid vertical stacking bias
+  const PAD_W = 4;
+  const PAD_H = 1;
+  const H_SCALE = 0.55; // compress vertical collision box
 
   function getBox(d) {
     const s = textSizes.get(d.id);
-    if (!s) return { hw: 30, hh: 10 };
-    return { hw: s.w / 2 + PAD, hh: s.h / 2 + PAD };
+    if (!s) return { hw: 30, hh: 6 };
+    return { hw: s.w / 2 + PAD_W, hh: s.h / 2 * H_SCALE + PAD_H };
   }
 
   /**
@@ -298,8 +301,8 @@ export function renderConceptMap(container, opts = {}) {
     .force("link", linkForce)
     .force("charge", d3.forceManyBody()
       .strength(d => {
-        if (!linkedIds.has(d.id)) return -80;
-        return -30 - fontSize(d) * 1.5;
+        if (!linkedIds.has(d.id)) return -40;
+        return -15 - fontSize(d) * 0.8;
       })
     )
     .force("center", d3.forceCenter(width / 2, height / 2).strength(0.4))
@@ -315,29 +318,26 @@ export function renderConceptMap(container, opts = {}) {
 
   function applySelection(conceptId) {
     _selectedId = conceptId;
-    if (!conceptId) {
-      node.attr("opacity", 1);
-      node.select("text")
-        .style("fill", d => getThemeColor(d.themeId))
-        .style("font-weight", "400");
-      link.attr("stroke-opacity", 0.4);
-      return;
-    }
-    node.attr("opacity", d =>
-      d.id === conceptId || links.some(l =>
-        (l.source.id === conceptId && l.target.id === d.id) ||
-        (l.target.id === conceptId && l.source.id === d.id)
-      ) ? 1 : 0.2
-    );
-    node.select("text").style("fill", d =>
-      d.id === conceptId ? "var(--accent)" : getThemeColor(d.themeId)
-    );
-    // selected node gets slightly heavier, not bold
-    node.select("text").style("font-weight", d =>
-      d.id === conceptId ? "500" : "400"
-    );
+    // Reset all nodes to normal
+    node.attr("opacity", 1);
+    node.select("text")
+      .style("fill", d => getThemeColor(d.themeId))
+      .style("font-weight", "400")
+      .style("paint-order", "stroke")
+      .style("stroke", "none")
+      .style("stroke-width", 0);
+    link.attr("stroke-opacity", 0.4);
+
+    if (!conceptId) return;
+
+    // Selected node: accent outline
+    node.select("text")
+      .style("stroke", d => d.id === conceptId ? getThemeColor(d.themeId) : "none")
+      .style("stroke-width", d => d.id === conceptId ? 0.4 : 0);
+
+    // Brighten connected links
     link.attr("stroke-opacity", l =>
-      (l.source.id === conceptId || l.target.id === conceptId) ? 0.8 : 0.05
+      (l.source.id === conceptId || l.target.id === conceptId) ? 0.8 : 0.4
     );
   }
 
@@ -442,7 +442,7 @@ export function renderConceptMap(container, opts = {}) {
       // stronger center pull with higher force
       simulation.force("center").strength(0.4 * factor);
       simulation.force("charge").strength(d => {
-        const base = linkedIds.has(d.id) ? -30 - fontSize(d) * 1.5 : -80;
+        const base = linkedIds.has(d.id) ? -15 - fontSize(d) * 0.8 : -40;
         return base / Math.max(0.5, factor * 0.3);
       });
       simulation.alpha(0.6).restart();

@@ -283,7 +283,7 @@ export function renameTheme(id, newLabel) {
 }
 
 export function getThemeColor(themeId) {
-  return state.themes[themeId]?.color || "#888";
+  return state.themes[themeId]?.color || "#2622346e";
 }
 
 // ── CRUD: Notes ─────────────────────────────────────────────────────────────
