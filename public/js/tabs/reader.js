@@ -509,6 +509,27 @@ function showToast(message) {
   toast.addEventListener("animationend", () => toast.remove());
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+const EYE_OPEN_PATHS = [
+  { d: "M17.7,13.5c0,2-1.6,3.7-3.7,3.7s-3.7-1.6-3.7-3.7,1.6-3.7,3.7-3.7,3.7,1.6,3.7,3.7" },
+  { d: "M14,10.9c3.9,0,7.6,1.2,10.7,3.2-2.2-3.6-6.1-6.1-10.7-6.1s-8.5,2.4-10.7,6.1c3.1-2,6.7-3.2,10.7-3.2" },
+  { d: "M21,17.8c-2.2.8-4.5,1.3-7,1.3s-4.8-.5-7-1.3c2,1.4,4.4,2.3,7,2.3s5-.8,7-2.3" },
+  { d: "M16.7,12.3c0,.8-.7,1.5-1.5,1.5s-1.5-.7-1.5-1.5.7-1.5,1.5-1.5,1.5.7,1.5,1.5", cls: "eye-glint" },
+];
+const EYE_CLOSE_PATHS = [
+  { d: "M14,17c3.9,0,7.6-1.2,10.7-3.2-2.2,3.6-6.1,6.1-10.7,6.1s-8.5-2.4-10.7-6.1c3.1,2,6.7,3.2,10.7,3.2" },
+];
+
+function setSvgPaths(svg, paths) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  for (const p of paths) {
+    const el = document.createElementNS(SVG_NS, "path");
+    el.setAttribute("d", p.d);
+    if (p.cls) el.setAttribute("class", p.cls);
+    svg.appendChild(el);
+  }
+}
+
 function initMarksToggle() {
   const btn = document.getElementById("marksToggle");
   const icon = document.getElementById("marksToggleIcon");
@@ -516,7 +537,7 @@ function initMarksToggle() {
 
   btn.addEventListener("click", () => {
     marksVisible = !marksVisible;
-    icon.src = marksVisible ? "icons/icons_eye-open.svg" : "icons/icons_eye-close.svg";
+    setSvgPaths(icon, marksVisible ? EYE_OPEN_PATHS : EYE_CLOSE_PATHS);
     const readerContent = document.getElementById("readerTextContent");
     if (readerContent) {
       readerContent.classList.toggle("marks-hidden", !marksVisible);

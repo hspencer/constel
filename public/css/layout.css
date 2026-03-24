@@ -174,8 +174,16 @@ body {
   transition: opacity 0.15s;
 }
 
+[data-theme="dark"] .marks-toggle {
+  color: var(--ink);
+}
+
 .marks-toggle:hover {
   opacity: 1;
+}
+
+.marks-toggle .eye-glint {
+  fill: var(--bg);
 }
 
 /* ── SVG icon inside buttons ─────────────────────────────────────────── */

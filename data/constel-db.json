@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-24T08:24:24.880Z",
+  "updatedAt": "2026-03-24T09:39:04.032Z",
   "sessionId": "",
   "sources": {
     "src_mn1lgx417b21": {
@@ -7103,6 +7103,28 @@
         "con_mn1oeclkynn7"
       ],
       "createdAt": "2026-03-23T05:32:13.285Z"
+    },
+    "exc_mn4ewhxn2fhf": {
+      "id": "exc_mn4ewhxn2fhf",
+      "sourceId": "src_mn1lgx417b21",
+      "text": "aquí\n  hoy\n  universo",
+      "start": 31528,
+      "end": 31549,
+      "conceptIds": [
+        "con_new_actopoet1"
+      ],
+      "createdAt": "2026-03-24T09:28:19.403Z"
+    },
+    "exc_mn4exavb57x2": {
+      "id": "exc_mn4exavb57x2",
+      "sourceId": "src_mn1lgx417b21",
+      "text": "la poesía     el acto poético      matrimonio de la mar con el dogo      la poesía semejante a aquellos franciscanos joaquinitas que partieron a bautizar a todos los hombres para que el mundo y su historia tuvieran acabamiento para apresurar así el fin del mundo       la poesía como acto parte a celebrar las bodas del lugar y de la fórmula",
+      "start": 33018,
+      "end": 33359,
+      "conceptIds": [
+        "con_new_actopoet1"
+      ],
+      "createdAt": "2026-03-24T09:28:56.903Z"
     }
   },
   "concepts": {
@@ -7355,7 +7377,7 @@
     "con_intro_proeza01": {
       "id": "con_intro_proeza01",
       "label": "la proeza",
-      "themeId": "thm_mn2eh17kwbm8",
+      "themeId": "thm_mn2ekumrwz9z",
       "createdAt": "2026-03-23T12:00:00.000Z"
     },
     "con_intro_vigilia1": {
@@ -7445,7 +7467,7 @@
     "con_new_gratuidad": {
       "id": "con_new_gratuidad",
       "label": "gratuidad",
-      "themeId": null,
+      "themeId": "thm_mn2eh17kwbm8",
       "createdAt": "2026-03-23T12:00:00.000Z"
     },
     "con_mn2e40yygss4": {
@@ -7764,6 +7786,6 @@
     }
   },
   "ui": {
-    "selectedConceptId": null
+    "selectedConceptId": "con_new_gratuidad"
   }
 }
