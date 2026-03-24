@@ -1,11 +1,11 @@
 /* Tab 3: Mapa & Temas */
 
-/* ── Map controls ──────────────────────────────────────────────────────── */
-.map-controls {
+/* ── Map toolbar ──────────────────────────────────────────────────────── */
+.map-toolbar {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  margin-left: auto;
+  padding: var(--space-sm) var(--space-md);
 }
 
 .control-label {
@@ -32,7 +32,7 @@
 }
 
 .map-control input[type="range"] {
-  width: 80px;
+  width: 100px;
   height: 4px;
   accent-color: var(--accent);
   cursor: pointer;
@@ -45,6 +45,18 @@
 
 .toggle-label {
   user-select: none;
+}
+
+.map-export {
+  margin-left: auto;
+  color: var(--muted);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.map-export:hover {
+  opacity: 1;
+  color: var(--accent);
 }
 
 /* iOS-style 2D/3D toggle switch */

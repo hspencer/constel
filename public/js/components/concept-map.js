@@ -468,6 +468,12 @@ export function renderConceptMap(container, opts = {}) {
     clearHighlight() {
       applySelection(null);
     },
+
+    refreshColors() {
+      // Update text fill colors without touching layout
+      node.select("text").style("fill", d => getThemeColor(d.themeId));
+      if (_selectedId) applySelection(_selectedId);
+    },
   };
 }
 

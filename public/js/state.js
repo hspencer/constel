@@ -283,7 +283,9 @@ export function renameTheme(id, newLabel) {
 }
 
 export function getThemeColor(themeId) {
-  return state.themes[themeId]?.color || "#2622346e";
+  if (state.themes[themeId]?.color) return state.themes[themeId].color;
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  return isDark ? "#a2a4a7d3" : "#28262fe2";
 }
 
 // ── CRUD: Notes ─────────────────────────────────────────────────────────────

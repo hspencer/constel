@@ -34,6 +34,14 @@ export function initThemesTab() {
   });
 
   initMapControls();
+
+  // Refresh colors when light/dark theme changes (no layout recalc)
+  new MutationObserver(() => {
+    const panel = document.getElementById("panel-themes");
+    if (panel?.classList.contains("active") && mapCtrl?.refreshColors) {
+      mapCtrl.refreshColors();
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 }
 
 export function onThemesActivated() {
@@ -137,6 +145,77 @@ function initMapControls() {
   edgeToggle?.addEventListener("change", () => {
     if (mapCtrl?.setEdgesVisible) mapCtrl.setEdgesVisible(edgeToggle.checked);
   });
+
+  document.getElementById("mapExportBtn")?.addEventListener("click", exportMap);
+}
+
+async function exportMap() {
+  const container = document.getElementById("mapContainer");
+  if (!container) return;
+
+  if (mapMode === "3d") {
+    // 3D: capture WebGL canvas as PNG @2x
+    const canvas = container.querySelector("canvas");
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `constel-mapa-3d-${new Date().toISOString().slice(0, 10)}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  } else {
+    // 2D: serialize SVG with embedded font
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+
+    // Embed Gabarito font from local repo as base64
+    let fontCSS = "";
+    try {
+      const resp = await fetch("fonts/Gabarito-Regular.ttf");
+      const buf = await resp.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const b64 = btoa(bin);
+      fontCSS = `@font-face { font-family: 'Gabarito'; font-weight: 400; src: url(data:font/truetype;base64,${b64}) format('truetype'); }`;
+    } catch {}
+
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = fontCSS;
+    defs.appendChild(style);
+    clone.insertBefore(defs, clone.firstChild);
+
+    // Inline computed styles from originals into clone
+    const origTexts = svg.querySelectorAll(".map-node text");
+    const cloneTexts = clone.querySelectorAll(".map-node text");
+    origTexts.forEach((orig, i) => {
+      const computed = window.getComputedStyle(orig);
+      const cl = cloneTexts[i];
+      if (!cl) return;
+      cl.style.fontFamily = "'Gabarito', system-ui, sans-serif";
+      cl.style.fontSize = computed.fontSize;
+      cl.style.fill = computed.fill;
+      cl.style.fontWeight = computed.fontWeight;
+    });
+    const origLinks = svg.querySelectorAll(".map-link");
+    const cloneLinks = clone.querySelectorAll(".map-link");
+    origLinks.forEach((orig, i) => {
+      const computed = window.getComputedStyle(orig);
+      const cl = cloneLinks[i];
+      if (!cl) return;
+      cl.setAttribute("stroke", computed.stroke);
+      cl.setAttribute("stroke-opacity", computed.strokeOpacity || orig.getAttribute("stroke-opacity") || "0.4");
+    });
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const data = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([data], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = `constel-mapa-2d-${new Date().toISOString().slice(0, 10)}.svg`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 }
 
 function renderThemeDetail() {

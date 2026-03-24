@@ -36,7 +36,7 @@
           </label>
         </div>
       </div>
-      <button class="btn-icon" id="themeToggle" title="Cambiar tema"><img src="icons/icons_mode-switch.svg" alt="Cambiar tema" width="20" height="20" style="filter: var(--icon-filter)"></button>
+      <button class="btn-icon" id="themeToggle" title="Cambiar tema"><img src="icons/icons_mode-switch.svg" alt="Cambiar tema" width="20" height="20" style="filter: var(--icon-filter); opacity: 0.8"></button>
     </div>
   </header>
 
@@ -69,12 +69,8 @@
     <section class="tab-panel active" id="panel-sources" role="tabpanel">
       <div class="split-view" data-split="sources">
         <div class="split-left" id="sourcesList">
-          <div class="panel-header">
-            <h2>Corpus</h2>
-            <span class="badge" id="sourcesCount">0</span>
-          </div>
           <div class="corpus-search">
-            <input type="text" id="corpusSearchInput" data-i18n="sources.search" placeholder="Buscar en todos los textos..." />
+            <input type="text" id="corpusSearchInput" placeholder="Buscar en todos los textos..." />
           </div>
           <div class="panel-content" id="sourcesListContent"></div>
           <div class="search-results" id="corpusSearchResults" hidden></div>
@@ -128,29 +124,33 @@
     <section class="tab-panel" id="panel-themes" role="tabpanel">
       <div class="split-view" data-split="themes">
         <div class="split-left" id="conceptMap">
-          <div class="panel-header">
-            <h2 data-i18n="map.title">Mapa de conceptos</h2>
-            <div class="map-controls">
-              <label class="map-control map-mode-switch" title="Modo de visualización">
-                <span class="mode-label" data-mode="2d">2D</span>
-                <input type="checkbox" id="mapModeToggle">
-                <span class="mode-slider"></span>
-                <span class="mode-label" data-mode="3d">3D</span>
-              </label>
-              <label class="map-control" title="Umbral: mostrar links con ≥ N secciones compartidas">
-                <span class="control-label">≥</span>
-                <input type="range" id="mapThresholdSlider" min="1" max="5" value="1" step="1">
-                <span class="control-value" id="mapThresholdValue">1</span>
-              </label>
-              <label class="map-control" title="Fuerza de atracción entre nodos conectados">
-                <span class="control-label">Fuerza</span>
-                <input type="range" id="mapStrengthSlider" min="1" max="30" value="5" step="1">
-              </label>
-              <label class="map-control" title="Mostrar aristas">
-                <input type="checkbox" id="mapEdgeToggle" checked>
-                <span class="toggle-label">Aristas</span>
-              </label>
-            </div>
+          <div class="panel-header map-toolbar">
+            <label class="map-control map-mode-switch" title="Modo de visualización">
+              <span class="mode-label" data-mode="2d">2D</span>
+              <input type="checkbox" id="mapModeToggle">
+              <span class="mode-slider"></span>
+              <span class="mode-label" data-mode="3d">3D</span>
+            </label>
+            <label class="map-control" title="Umbral: mostrar links con ≥ N secciones compartidas">
+              <span class="control-label">≥</span>
+              <input type="range" id="mapThresholdSlider" min="1" max="5" value="1" step="1">
+              <span class="control-value" id="mapThresholdValue">1</span>
+            </label>
+            <label class="map-control" title="Fuerza de atracción entre nodos conectados">
+              <span class="control-label">Fuerza</span>
+              <input type="range" id="mapStrengthSlider" min="1" max="30" value="5" step="1">
+            </label>
+            <label class="map-control" title="Mostrar aristas">
+              <input type="checkbox" id="mapEdgeToggle" checked>
+              <span class="toggle-label">Aristas</span>
+            </label>
+            <button class="btn-icon map-export" id="mapExportBtn" title="Descargar mapa">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
           </div>
           <div class="panel-content map-content" id="mapContainer"></div>
         </div>

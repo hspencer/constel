@@ -52,9 +52,9 @@ export function renderConceptMap3D(container, opts = {}) {
   // CSS vars
   const root = document.documentElement;
   const cs = getComputedStyle(root);
-  const isDark = root.getAttribute("data-theme") === "dark";
+  let isDark = root.getAttribute("data-theme") === "dark";
   const textColor = cs.getPropertyValue("--ink").trim() || (isDark ? "#e7dada" : "#333");
-  const mutedColor = cs.getPropertyValue("--muted").trim() || "#191c636d";
+  const mutedColor = cs.getPropertyValue("--muted").trim() || "#e3e3e967";
 
   // ── Font size scale ──
   const maxExc = Math.max(1, ...nodes.map(n => n.excerptCount));
@@ -155,8 +155,8 @@ export function renderConceptMap3D(container, opts = {}) {
 
     ctx.globalAlpha = 1.0;
     ctx.fillStyle = selected
-      ? (isDark ? "rgba(30,30,30,0.97)" : "rgba(255, 255, 255, 0.93)")
-      : (isDark ? "rgba(30,30,30,0.93)" : "rgba(255, 255, 255, 0.64)");
+      ? (isDark ? "rgba(0, 0, 0, 0.97)" : "rgba(255, 255, 255, 0.94)")
+      : (isDark ? "rgba(0, 0, 0, 0.37)" : "rgba(255, 255, 255, 0.59)");
     ctx.beginPath();
     ctx.moveTo(rx + rr, ry);
     ctx.lineTo(rx + pillW - rr, ry);
@@ -297,7 +297,10 @@ export function renderConceptMap3D(container, opts = {}) {
   }
 
   // ── Instantiate graph ──
-  const graph = new ForceGraph3D(container, { controlType: "orbit" })
+  const graph = new ForceGraph3D(container, {
+    controlType: "orbit",
+    rendererConfig: { preserveDrawingBuffer: true, antialias: true },
+  })
     .width(width)
     .height(height)
     .backgroundColor("rgba(0, 0, 0, 0)")
@@ -422,6 +425,14 @@ export function renderConceptMap3D(container, opts = {}) {
     clearHighlight() {
       selectedNodeId = null;
       graph.nodeThreeObject(node => createNodeSprite(node));
+    },
+
+    refreshColors() {
+      // Re-read isDark and recreate sprites without touching positions
+      isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      graph.nodeThreeObject(n => createNodeSprite(n));
+      // Update centroid line materials
+      centroidMaterials.clear();
     },
 
     destroy() {

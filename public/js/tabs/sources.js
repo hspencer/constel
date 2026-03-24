@@ -19,7 +19,7 @@ export function onSourcesActivated() {
 
 async function renderSourcesList() {
   const listEl = document.getElementById("sourcesListContent");
-  const countEl = document.getElementById("sourcesCount");
+  const searchInput = document.getElementById("corpusSearchInput");
   if (!listEl) return;
 
   // obtener archivos del corpus
@@ -51,7 +51,7 @@ async function renderSourcesList() {
     }
   }
 
-  countEl.textContent = all.length;
+  if (searchInput) searchInput.placeholder = `Buscar en los ${all.length} textos`;
 
   if (!all.length) {
     listEl.innerHTML = `<p class="placeholder">Coloca archivos .txt o .md en la carpeta corpus/</p>`;
