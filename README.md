@@ -91,8 +91,8 @@ con§tel usa un modelo de **persistencia dual** que permite funcionar tanto como
 
 ```
 ┌─────────────────┐         ┌──────────────────┐
-│   localStorage   │◀──────▸│   constel-db.json │
-│   (inmediato)    │  sync   │   (servidor)      │
+│   localStorage  │◀──-────▸│  constel-db.json │
+│   (inmediato)   │  sync   │  (servidor)      │
 └─────────────────┘         └──────────────────┘
         ▲                           ▲
         │                           │
