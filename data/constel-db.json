@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-23T05:32:13.596Z",
+  "updatedAt": "2026-03-24T08:24:24.880Z",
   "sessionId": "",
   "sources": {
     "src_mn1lgx417b21": {
@@ -7325,7 +7325,7 @@
     "con_intro_mnemosyn": {
       "id": "con_intro_mnemosyn",
       "label": "mnemosine",
-      "themeId": null,
+      "themeId": "thm_mn4c8dwqdcav",
       "createdAt": "2026-03-23T12:00:00.000Z"
     },
     "con_intro_mythos01": {
@@ -7349,7 +7349,7 @@
     "con_intro_saludo01": {
       "id": "con_intro_saludo01",
       "label": "el saludo",
-      "themeId": null,
+      "themeId": "thm_mn4c8dwqdcav",
       "createdAt": "2026-03-23T12:00:00.000Z"
     },
     "con_intro_proeza01": {
@@ -7379,7 +7379,7 @@
     "con_intro_palabmyt": {
       "id": "con_intro_palabmyt",
       "label": "palabra primera",
-      "themeId": null,
+      "themeId": "thm_mn4c8dwqdcav",
       "createdAt": "2026-03-23T12:00:00.000Z"
     },
     "con_amr2_fundartc": {
@@ -7481,7 +7481,7 @@
     "con_mn2g0zhh15s8": {
       "id": "con_mn2g0zhh15s8",
       "label": "la huella",
-      "themeId": null,
+      "themeId": "thm_mn4c8dwqdcav",
       "createdAt": "2026-03-23T00:24:16.037Z"
     },
     "con_mn2g0zhinost": {
@@ -7559,7 +7559,7 @@
     "con_mn2kj5yopkrw": {
       "id": "con_mn2kj5yopkrw",
       "label": "entreacto",
-      "themeId": null,
+      "themeId": "thm_mn4c8dwqdcav",
       "createdAt": "2026-03-23T02:30:22.704Z"
     },
     "con_mn2kj5yplpii": {
@@ -7631,7 +7631,7 @@
     "con_mn2kqrhvffmw": {
       "id": "con_mn2kqrhvffmw",
       "label": "el intercambio",
-      "themeId": null,
+      "themeId": "thm_mn4c8dwqdcav",
       "createdAt": "2026-03-23T02:36:17.203Z"
     },
     "con_mn2kqzkfr2cv": {
@@ -7661,7 +7661,7 @@
     "con_mn2oypydde27": {
       "id": "con_mn2oypydde27",
       "label": "el intermedio",
-      "themeId": null,
+      "themeId": "thm_mn4c8dwqdcav",
       "createdAt": "2026-03-23T04:34:26.917Z"
     },
     "con_mn2oz8t5rqty": {
@@ -7746,14 +7746,24 @@
       "color": "#d97706",
       "sortOrder": 2,
       "createdAt": "2026-03-23T01:50:15.575Z"
+    },
+    "thm_mn4c8dwqdcav": {
+      "id": "thm_mn4c8dwqdcav",
+      "label": "La mediaFranca del lenguaje",
+      "color": "#dc2626",
+      "sortOrder": 3,
+      "createdAt": "2026-03-24T08:13:35.210Z"
     }
   },
   "notes": {
     "note_mn2eij5atv86": {
       "id": "note_mn2eij5atv86",
       "themeId": "thm_mn2eh17kwbm8",
-      "text": "El sentido de la fundación",
-      "updatedAt": "2026-03-22T23:43:11.324Z"
+      "text": "La obra de cada cual. Es lo que nos permite pertenecer y cohabitar materialmente. \nLo abierto puede ser:\n- lo inconcluso\n- no disponible y dispuesto\n- lo por inventar y construir (individualmente o entre todos, o entre varios)\n- las formas de futuro entre varios",
+      "updatedAt": "2026-03-24T08:24:24.570Z"
     }
+  },
+  "ui": {
+    "selectedConceptId": null
   }
 }
